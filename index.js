@@ -4,16 +4,16 @@ import WebSocket from 'ws';
 import mongoose from 'mongoose';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
-import authRoutes from './routes/auth.js';
-import mapRoutes from './routes/map.js';
-import { verifyToken } from './middlewares/authMiddleware.js';
+import {auth} from './src/routes/auth.js';
+import {map} from './src/routes/map.js';
+import {authMiddlewere} from './src/middlewares/authMiddlewere.js';
 
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.server({server});
+const wss = new WebSocket.Server({ server })
 
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
@@ -22,12 +22,12 @@ mongoose.connect(process.env.MONGO_URI, {
   .catch((err)=> console.error('Error al conector'));
   app.use(bodyParser.json());
   
-  app.use('/auth' , authRoutes);
-  app.use('/map', mapRoutes);
+  app.use('/auth' , auth);
+  app.use('/map', map);
 
   wss.on('connection', (ws, req) => {
     const token = req.url.split('?token=')[1];
-    const decoded = verifyToken(token);
+    const decoded = authMiddlewere(token);
     if(!decoded) {
         ws.close();
         return;
