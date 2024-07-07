@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import {useModel} from './userModel.js'
 
@@ -7,7 +7,7 @@ export const registrer = async (req, res) => {
 
     try {
         
-        const existingUser = await User.findOne({email});
+        const existingUser = await useModel.findOne({email});
         if (existingUser){
             return res.status(400).json({message: 'El usuario ya existe'})
         }
@@ -33,7 +33,7 @@ export const registrer = async (req, res) => {
         const {email, password} = req.body;
 
         try {
-            const existingUser = await User.findOne({email});
+            const existingUser = await useModel.findOne({email});
             if (!existingUser) {
                 return res.status(404).json({massage: 'Usuario no encontrado'});
             }

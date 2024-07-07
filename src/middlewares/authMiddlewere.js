@@ -1,9 +1,20 @@
-// authMiddleware.js
+import jwt from 'jsonwebtoken';
+4
+const authMiddleware = (req, res, next) => {
+    const token = req.header('Autorizacion');
 
-export const verifyToken = (token) => {
-    // Simulación de verificación de token básica
-    if (token === 'token_de_prueba') {
-        return { username: 'usuario_de_prueba' }; // Simulación de token decodificado
+    if(!token) {
+        return res.status(401).json({message: 'Acceso denegado. No hay token prorcionado.'});
+
     }
-    return null;
-};
+
+    try {
+        const decode = jwt.verify(token,process.env.JWT_SECERET );
+        req.user = decode;
+        next();
+    } catch (err) {
+       res.status(400).json({message: 'Token invalido'});
+    }
+}
+
+export default authMiddleware;
