@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 4
 const authMiddleware = (req, res, next) => {
-    const token = req.header('Autorizacion');
+    const token = req.header('Authorization');
 
     if(!token) {
         return res.status(401).json({message: 'Acceso denegado. No hay token prorcionado.'});

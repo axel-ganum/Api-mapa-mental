@@ -1,13 +1,14 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import {useModel} from './userModel.js'
+import { User } from '../models/userModel.js';
 
 export const registrer = async (req, res) => {
     const {username, email, password} = req.body;
+    const profilePicture = req.file ? req.file.buffer : null;
 
     try {
         
-        const existingUser = await useModel.findOne({email});
+        const existingUser = await User.findOne({email});
         if (existingUser){
             return res.status(400).json({message: 'El usuario ya existe'})
         }
@@ -17,7 +18,8 @@ export const registrer = async (req, res) => {
            const newUser= new User({
             username,
             email,
-            password: hashedpassword
+            password: hashedpassword,
+            profilePicture
            });
 
            await newUser.save();
@@ -33,7 +35,7 @@ export const registrer = async (req, res) => {
         const {email, password} = req.body;
 
         try {
-            const existingUser = await useModel.findOne({email});
+            const existingUser = await User.findOne({email});
             if (!existingUser) {
                 return res.status(404).json({massage: 'Usuario no encontrado'});
             }
