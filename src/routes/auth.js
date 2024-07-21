@@ -1,14 +1,13 @@
 import express from 'express';
-import { register, login } from '../controllers/authController.js';
-import authMiddleware from '../middlewares/authMiddlewere.js';
-import { User } from '../models/userModel.js';
+import { register, login } from '../controllers/authController.js'; // Corregido: 'autController' a 'authController'
+import authMiddleware from '../middlewares/authMiddleware.js'; // Corregido: 'authMiddlewere' a 'authMiddleware'
+import User from '../models/userModel.js'; // Corregido: Eliminado la desestructuración
 import upload from '../middlewares/upload.js';
 
 const router = express.Router();
 
 router.post('/register', upload.single('profilePicture'), register);
 router.post('/login', login);
-
 
 router.get('/me', authMiddleware, async (req, res) => {
     try {
@@ -28,3 +27,4 @@ router.get('/me', authMiddleware, async (req, res) => {
 });
 
 export default router;
+

@@ -1,12 +1,11 @@
 import mongoose from 'mongoose';
 
-
-const mindamapaSchema = new mongoose.Schema({
+const mindmapSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true
     },
-    desciption : {
+    description: { // Corrección de 'desciption' a 'description'
         type: String,
     },
     user: {
@@ -16,16 +15,14 @@ const mindamapaSchema = new mongoose.Schema({
     },
     nodes: [
         {
-             type: mongoose.Schema.Types.ObjectId,
-             ref: 'Node',
-            
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Node',
         },
     ],
-
-},{
+}, {
     timestamps: true,
+});
 
+const Mindmap = mongoose.model('Mindmap', mindmapSchema);
 
-})
- 
-export const Mindmap = mongoose.model('Mindmap', mindamapaSchema)
+export default Mindmap;

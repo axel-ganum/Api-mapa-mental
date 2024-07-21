@@ -31,10 +31,10 @@ const nodeSchema = new mongoose.Schema({
             required: true,
         },
     },
-},
- {
+}, {
     timestamps: true,
- },
-);
+});
 
-export const Node = mongoose.model('Node', nodeSchema)
+const Node = mongoose.model('Node', nodeSchema);
+
+export default Node;

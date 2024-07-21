@@ -1,7 +1,6 @@
+import mongoose from 'mongoose';
 
-import mongose from 'mongose';
-
-const userSchema = new mongose.Schema({
+const userSchema = new mongoose.Schema({
     username: {
         type: String,
         required: true,
@@ -18,10 +17,15 @@ const userSchema = new mongose.Schema({
     },
     profilePicture: {
         type: String,
-        default: null            
+        default: null,
     }
 }, {
     timestamps: true,
 });
 
- export const User = mongose.model('User', userSchema);
+const User = mongoose.model('User', userSchema);
+
+export default User; // Aquí exportamos el modelo User
+
+// No es necesario exportar `userSchema` a menos que lo necesites para otro propósito
+
