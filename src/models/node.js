@@ -1,9 +1,20 @@
 import mongoose from 'mongoose';
 
+
 const nodeSchema = new mongoose.Schema({
     content: {
         type: String,
-        required: true,
+        required: true, // Aquí guardas el texto directamente
+    },
+    position: {
+        x: {
+            type: Number,
+            required: true,
+        },
+        y: {
+            type: Number,
+            required: true,
+        },
     },
     mindmap: {
         type: mongoose.Schema.Types.ObjectId,
@@ -21,16 +32,12 @@ const nodeSchema = new mongoose.Schema({
             ref: 'Node',
         },
     ],
-    position: {
-        x: {
-            type: Number,
-            required: true,
-        },
-        y: {
-            type: Number,
-            required: true,
-        },
-    },
+    edges: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Node',
+        }
+    ]
 }, {
     timestamps: true,
 });
@@ -38,3 +45,4 @@ const nodeSchema = new mongoose.Schema({
 const Node = mongoose.model('Node', nodeSchema);
 
 export default Node;
+

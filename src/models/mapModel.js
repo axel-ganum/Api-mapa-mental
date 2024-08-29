@@ -5,7 +5,7 @@ const mindmapSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    description: { // Corrección de 'desciption' a 'description'
+    description: { 
         type: String,
     },
     user: {
@@ -19,7 +19,11 @@ const mindmapSchema = new mongoose.Schema({
             ref: 'Node',
         },
     ],
-}, {
+thumbnail: {  
+    type: String,  
+    default: null,
+},
+},{ 
     timestamps: true,
 });
 

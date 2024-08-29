@@ -1,20 +1,19 @@
 import jwt from 'jsonwebtoken';
-4
-const authMiddleware = (req, res, next) => {
-    const token = req.header('Authorization');
+import authenticateToken from './authenticateToken.js';
 
-    if(!token) {
-        return res.status(401).json({message: 'Acceso denegado. No hay token prorcionado.'});
+const authMiddleware = async (req, res, next) => {
+   const token = req.headers.authorization?.split(' ')[1];
 
-    }
+   if(!token) {
+    return res.status(400).json({message: 'token no proporcionado'});
+   }
 
-    try {
-        const decode = jwt.verify(token,process.env.JWT_SECERET );
-        req.user = decode;
-        next();
-    } catch (err) {
-       res.status(400).json({message: 'Token invalido'});
-    }
+   try {
+    req.user = await authenticateToken(token);
+    next() 
+   } catch (err) {
+    res.status(400).json({message: err.message})
+   }
 }
 
 export default authMiddleware;
