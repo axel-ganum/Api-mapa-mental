@@ -8,7 +8,8 @@ router.get('/all', authMiddleware, async(req, res) => {
 try {
     const userId = req.user.id
     const maps = await Mindmap.find({user: userId}, 'title description createAt updatedAt thumbnail')
-    
+    .populate('user', 'username')
+    .select('title description createdAt updatedAt thumbnail user')
     
     res.json(maps)
 
