@@ -86,4 +86,42 @@ export const createMindmap = async ({title, description, nodes, edges,thumbnail,
  }
 }
 
+export const getMapById = async (mapId, userId) => {
+   try {
+     const map = await Mindmap.findOne({_id: mapId, userId});
+
+     if (!map) {
+        console.log('Mapa no encontrado o no pertenec al usuario');
+        return null
+        
+     }
+
+     const nodes = await Node.find({mindmap: map._id});
+     const edges = await Edge.find({mindmap: map.id});
+    
+     const result = {
+        ...map.toObject(),
+        nodes: nodes.map((node) => ({
+            id: node._id,
+            content: node.content,
+            position: node.position,
+            edges: node.edges,
+            children: node.children,
+        })),
+        edges: edges.map((edge) => ({
+            id: edge._id,
+            source: edge.source,
+            target: edge.target,
+        })),
+     };
+
+       console.log('Mpa encontrado:', result);
+       return result;
+       
+    
+   } catch (error) {
+     conlose.error('Error al busacar el mapa', err);
+     throw err
+   }
+}
 

@@ -9,7 +9,7 @@ import map from './src/middlewares/veryfyToken.js';
 import maps from './src/routes/maps.js'
 import authMiddleware from './src/middlewares/authMiddleware.js'; // Corregido: Se cambió 'authMiddlewere' a 'authMiddleware'
 import cors from 'cors';
-import { createMindmap } from './src/routes/map.js';
+import { createMindmap, getMapById } from './src/routes/map.js';
 import authenticateToken from './src/middlewares/authenticateToken.js';
 dotenv.config();
 
@@ -95,12 +95,36 @@ wss.on('connection', async (ws, req) => {
             }
         }else{
             console.log("No se encontro el payload en los datos recibidos ")
-        }} else {
-       
-            ws.send(JSON.stringify({type: 'error', message: 'Error al guardar el mapa mental'}))
-        
-        
+        } 
+    }
+        else if (data.action === 'getMap') {
+            console.log("Tipo de accion 'getMap' reconocida");
+            const mapId = data.payload?.id;
+
+
+            if(!mapId) {
+                ws.send(JSON.stringify({ type: 'error', message: 'ID de mapa no proporcionado' }));
+                return; 
+            } try {
+                const map = await getMapById(mapId, ws.user.id);
+                if (!map) {
+                    ws.send(JSON.stringify({ type: 'error', message: 'Mapa no encontrado' }));
+                    return;
+ 
+                }
+
+                ws.send(JSON.stringify({type: 'succes', map}))
+                } catch (error) {
+                   console.error('Error al obtener el mapa:', err);
+                   ws.send(JSON.stringify({ type: 'error', message: 'Error al obtener el mapa' }));
+
+            }
+
+        } else {
+            ws.send(JSON.stringify({ type: 'error', message: 'Acción desconocida' }));
         }
+        
+    
     } catch (err) {
         ws.send(JSON.stringify({type: 'error', message: 'Invalid message format'}));
         console.error('Error al procesar el mansaje:' , err);
