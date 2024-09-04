@@ -45,91 +45,99 @@ wss.on('connection', async (ws, req) => {
         return;
     }
     
-
-    ws.on('message', async ( message) => {
-         
-         if (Buffer.isBuffer(message)) {
-            console.log("Mensaje recibido como Buffer, conviertelo");
+    ws.on('message', async (message) => {
+        // Convertir el mensaje a cadena de texto si es un Buffer
+        if (Buffer.isBuffer(message)) {
+            console.log("Mensaje recibido como Buffer, convirtiéndolo...");
             message = message.toString();
-       }
-        
-        try {
-            const data = JSON.parse(message);
-             
-            console.log('Datos recividos:', JSON.stringify(data, null, 2));
-
-            
-             
-        if (data.action === 'saveMap') {
-                console.log("Tipo de accion saveMap reconocidos")
-                if(data.payload) {
-                    console.log("payload recibido:", JSON.stringify(data.payload, null, 2) )
-                const {title, description, nodes, edges, thumbnail} = data.payload;
-                 
-                if (!title || !description || !Array.isArray(nodes) || !Array.isArray(edges) || !thumbnail)  {
-                   console.log (2-"Datos insuficientes o mal formateados");
-                   ws.send(JSON.stringify({type:'error', message: 'Datos insuficientes o mal formateados para crear el mapa'})) 
-                   return
-                }
-                console.log('Guardar mapa mental con titulo:', title);
-                console.log('Nodos:', nodes);
-                console.log('Edges', edges)
-
-                console.log('About to call createMindmap function');
-                try {
-                    console.log('Guardando mapa mental con titulo', title);
-                    
-                    const saveMindemap = await createMindmap({
-                        title,
-                        description,
-                        nodes,
-                        edges,
-                        thumbnail,
-                        userId: ws.user.id,
-
-                    });ws.send(JSON.stringify({type: 'success', payload: saveMindemap}))
-                    console.log('Map mental guardado:', saveMindemap)
-    } catch (err) {
-        console.error('Error al guardar el mapa mental', err)
-      ws.send(JSON.stringify({type: 'error',message: 'Faild message format' }))
-            }
-        }else{
-            console.log("No se encontro el payload en los datos recibidos ")
-        } 
-    }
-        else if (data.action === 'getMap') {
-            console.log("Tipo de accion 'getMap' reconocida");
-            const mapId = data.payload?.id;
-
-
-            if(!mapId) {
-                ws.send(JSON.stringify({ type: 'error', message: 'ID de mapa no proporcionado' }));
-                return; 
-            } try {
-                const map = await getMapById(mapId, ws.user.id);
-                if (!map) {
-                    ws.send(JSON.stringify({ type: 'error', message: 'Mapa no encontrado' }));
-                    return;
- 
-                }
-
-                ws.send(JSON.stringify({type: 'succes', map}))
-                } catch (error) {
-                   console.error('Error al obtener el mapa:', err);
-                   ws.send(JSON.stringify({ type: 'error', message: 'Error al obtener el mapa' }));
-
-            }
-
-        } else {
-            ws.send(JSON.stringify({ type: 'error', message: 'Acción desconocida' }));
         }
         
+        try {
+            const data = JSON.parse(message);  // Intentar parsear el mensaje recibido
+            console.log('Datos recibidos:', JSON.stringify(data, null, 2));
     
-    } catch (err) {
-        ws.send(JSON.stringify({type: 'error', message: 'Invalid message format'}));
-        console.error('Error al procesar el mansaje:' , err);
-    }
-}) 
+            // Manejo de la acción 'saveMap'
+            if (data.action === 'saveMap') {
+                console.log("Tipo de acción 'saveMap' reconocida");
+                
+                if (data.payload) {
+                    console.log("Payload recibido:", JSON.stringify(data.payload, null, 2));
+                    const { title, description, nodes, edges, thumbnail } = data.payload;
+                     
+                    // Validación de datos del payload
+                    if (!title || !description || !Array.isArray(nodes) || !Array.isArray(edges) || !thumbnail) {
+                        console.log("Datos insuficientes o mal formateados");
+                        ws.send(JSON.stringify({ type: 'error', message: 'Datos insuficientes o mal formateados para crear el mapa' }));
+                        return;
+                    }
+    
+                    try {
+                        // Intentar crear y guardar el mapa mental
+                        console.log('Guardando mapa mental con título:', title);
+                        const savedMindmap = await createMindmap({
+                            title,
+                            description,
+                            nodes,
+                            edges,
+                            thumbnail,
+                            userId: ws.user.id,
+                        });
+    
+                        ws.send(JSON.stringify({ type: 'success', payload: savedMindmap }));
+                        console.log('Mapa mental guardado:', savedMindmap);
+                    } catch (err) {
+                        console.error('Error al guardar el mapa mental:', err);
+                        ws.send(JSON.stringify({ type: 'error', message: 'Error al guardar el mapa mental' }));
+                    }
+                } else {
+                    console.log("No se encontró el payload en los datos recibidos.");
+                    ws.send(JSON.stringify({ type: 'error', message: 'Payload no proporcionado' }));
+                }
+    
+            } 
+            // Manejo de la acción 'getMap'
+            else if (data.action === 'getMap') {
+                console.log("Tipo de acción 'getMap' reconocida");
+                const mapId = data.payload?.id;
+    
+                if (!mapId) {
+                    ws.send(JSON.stringify({ type: 'error', message: 'ID de mapa no proporcionado' }));
+                    return; 
+                }
+    
+                try {
+                    // Intentar obtener el mapa por su ID
+                    const map = await getMapById(mapId, ws.user.id);
+                    if (!map) {
+                        ws.send(JSON.stringify({ type: 'error', message: 'Mapa no encontrado' }));
+                        return;
+                    }
+    
+                    ws.send(JSON.stringify({ type: 'success', map }));
+                } catch (err) {
+                    console.error('Error al obtener el mapa:', err);
+                    ws.send(JSON.stringify({ type: 'error', message: 'Error al obtener el mapa' }));
+                }
+    
+            } 
+            // Manejo de acción desconocida
+            else {
+                ws.send(JSON.stringify({ type: 'error', message: 'Acción desconocida' }));
+            }
+    
+        } catch (error) {
+            // Manejo de errores en el formato del mensaje
+            ws.send(JSON.stringify({ type: 'error', message: 'Formato de mensaje inválido' }));
+            console.error('Error al procesar el mensaje:', error);
+        }
+    });
+    
+    // Manejo de cierre de la conexión
+    ws.on('close', () => {
+        console.log('Cliente desconectado');
+    });
+    
+ 
 
     ws.on('close', () => {
         console.log('Cliente desconectado');

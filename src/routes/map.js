@@ -88,16 +88,16 @@ export const createMindmap = async ({title, description, nodes, edges,thumbnail,
 
 export const getMapById = async (mapId, userId) => {
    try {
-     const map = await Mindmap.findOne({_id: mapId, userId});
+     const map = await Mindmap.findOne({_id: mapId, user: userId});
 
      if (!map) {
-        console.log('Mapa no encontrado o no pertenec al usuario');
+        console.log('Mapa no encontrado o no pertenece al usuario');
         return null
         
      }
 
      const nodes = await Node.find({mindmap: map._id});
-     const edges = await Edge.find({mindmap: map.id});
+     const edges = await Edge.find({mindmap: map._id});
     
      const result = {
         ...map.toObject(),
@@ -120,7 +120,7 @@ export const getMapById = async (mapId, userId) => {
        
     
    } catch (error) {
-     conlose.error('Error al busacar el mapa', err);
+     console.error('Error al busacar el mapa', error);
      throw err
    }
 }
