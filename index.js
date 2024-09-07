@@ -9,7 +9,7 @@ import map from './src/middlewares/veryfyToken.js';
 import maps from './src/routes/maps.js'
 import authMiddleware from './src/middlewares/authMiddleware.js'; // Corregido: Se cambió 'authMiddlewere' a 'authMiddleware'
 import cors from 'cors';
-import { createMindmap, getMapById } from './src/routes/map.js';
+import { createMindmap, getMapById, updateMindmap} from './src/routes/map.js';
 import authenticateToken from './src/middlewares/authenticateToken.js';
 dotenv.config();
 
@@ -112,7 +112,8 @@ wss.on('connection', async (ws, req) => {
                         ws.send(JSON.stringify({ type: 'error', message: 'Mapa no encontrado' }));
                         return;
                     }
-    
+                    
+                    console.log('Enviando respuesta:', JSON.stringify({ type: 'success', map }))
                     ws.send(JSON.stringify({ type: 'success', map }));
                 } catch (err) {
                     console.error('Error al obtener el mapa:', err);
@@ -120,7 +121,43 @@ wss.on('connection', async (ws, req) => {
                 }
     
             } 
-            // Manejo de acción desconocida
+             
+            else if (data.action === 'updateMap') {
+               console.log("Tipo de acción 'updateMap' reconocida");
+               
+               if(data.payload) {
+                 const {id, title, description, nodes, edges, thumbnail} = data.payload;
+
+                 if(!id || !title || !description || !Array.isArray(nodes) || !Array.isArray(edges)) {
+                     ws.send(JSON.stringify({ type: 'error', message: 'Datos insuficientes o mal formateados para actualizar el mapa' }));
+                        return;
+                 }
+                 
+                 try {
+                    console.log('Actualizando mapa menntal con ID:', id);
+                    const updatedMindmap = await updateMindmap ({
+                        id,
+                        title,
+                        description,
+                        nodes,
+                        edges,
+                        thumbnail,
+                        userId: ws.user.id
+                    });
+
+                    if (updateMindmap) {
+                        ws.send(JSON.stringify({type: 'success', payload: updateMindmap}));
+                        console.log('Mapa mental actualizado:', updateMindmap)
+                    } else {
+                     ws.send(JSON.stringify({ type: 'error', message: 'No se pudo encontrar el mapa para actualizar' }));  
+                    }
+                    
+                 } catch (error) {
+                    console.error('Error al actualizar el mapa mental:', error);
+                        ws.send(JSON.stringify({ type: 'error', message: 'Error al actualizar el mapa mental' }));
+                 }
+               }
+            }
             else {
                 ws.send(JSON.stringify({ type: 'error', message: 'Acción desconocida' }));
             }

@@ -2,6 +2,7 @@ import Mindmap from '../models/mapModel.js'; // Corregido: Se añadió el punto 
 import Node from '../models/node.js'; // Corregido: Se añadió el punto y coma al final de la importación
 import Edge from '../models/edgesModel.js';
 import mongoose from 'mongoose';
+import { title } from 'process';
 
 
 export const createMindmap = async ({title, description, nodes, edges,thumbnail,userId  }) => {
@@ -123,5 +124,106 @@ export const getMapById = async (mapId, userId) => {
      console.error('Error al busacar el mapa', error);
      throw err
    }
+}
+
+export const updateMindmap = async ({id, title, description, nodes, edges, thumbnail}) => {
+    console.log("Actualizando mapa mental");
+   
+
+    if (!id || !title || !description || !nodes.length || !edges || !thumbnail) {
+        console.log("Datos insuficientes para actualizar el mapa");
+        
+
+        throw new Error("Datos insuficinetes para actualizar el mapa")
+    
+    }
+
+    try {
+    console.log("Actualizar el mapa mental con ID:", id);
+    const updatedMindmap  = await Mindmap.findByIdAndUpdate(
+        {_id:id, user:userId},
+        {title, description, thumbnail},
+        {new: true}
+    )
+
+    if(!updateMindmap) {
+        console.log("Mapa mental no encontrado o no pertenece al usuario");
+        return null;
+        
+    }
+
+    console.log("Mapa mental no encontrado o no pertenece al usuario ");
+
+    const nodeMap = new Map ();
+    const nodePromise = nodes.map(async (nodeData) => {
+     if(nodeData.id) {
+
+        const updateNode =  await Node.findByIdAndUpdate(
+            {_id: nodeData.id, mindmap: updateMindmap._id},
+            {content: nodeData.content, position: nodeData.position},
+            {new: true}
+        )
+        nodeMap.set(nodeData.id, updateNode._id);
+        return updateNode._id;
+        } else {
+            const newNode = new Node({
+                content: nodeData.content,
+                position: nodeData.position,
+                mindmap: updateMindmap
+            });
+            const savedNode = await newNode.save();
+            nodeMap.set(nodeData.id, savedNode._id);
+            return savedNode;
+         
+            
+
+            
+     }
+    });
+    const saveNodeIds = await Promise.all(nodePromise);
+    console.log("Nodos procesados (creandos/ actualizados):", saveNodeIds);
+      
+    const edgePromise = edges.map(async (edgesData) => {
+        const sourceId = nodeMap.get(edgesData.source);
+        const targetId = nodeMap.get(edgesData.target);
+
+        if (!sourceId || !targetId) {
+            console.log(('Error: nodos no encontrados para los edges', edgesData));
+            throw new Error("No se encontraron nodos para los edges");  
+        }
+
+        if (edgesData.id) {
+
+            await Edge.findByIdAndUpdate(
+                {_id: edgesData.id, mindmap: updateMindmap._id},
+                {source: sourceId, target: targetId}
+            );
+            
+        } else {
+
+            const newEdge = new Edge({
+               source: new mongoose.Types.ObjectId(sourceId),
+               target: new mongoose.Types.ObjectId(targetId),
+               mindmap: updateMindmap._id, 
+            });
+            await newEdge.save();
+        }
+         await Node.findByIdAndUpdate(sourceId, {
+            $addToSet: { edges: edgeData.id || newEdge._id, children: targetId },
+         })
+         await Node.findByIdAndUpdate(targetId, {
+            $addToSet: { edges: edgeData.id || newEdge._id },
+          });
+    });
+
+    await Promise.all(edgePromise);
+    console.log("Edges procesados (creados/actualizados");
+    return updateMindmap
+    
+    } catch (error) {
+        console.error("Error al actualizar el mapa mental:", error);
+    throw new Error("Error al actualizar el mapa mental: " + error.message);
+        
+    }
 }
 
