@@ -2,7 +2,7 @@ import Mindmap from '../models/mapModel.js'; // Corregido: Se añadió el punto 
 import Node from '../models/node.js'; // Corregido: Se añadió el punto y coma al final de la importación
 import Edge from '../models/edgesModel.js';
 import mongoose from 'mongoose';
-import { title } from 'process';
+
 
 
 export const createMindmap = async ({title, description, nodes, edges,thumbnail,userId  }) => {
@@ -146,7 +146,7 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
         {new: true}
     )
 
-    if(!updateMindmap) {
+    if(!updatedMindmap) {
         console.log("Mapa mental no encontrado o no pertenece al usuario");
         return null;
         
@@ -159,7 +159,7 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
      if(nodeData.id) {
 
         const updateNode =  await Node.findByIdAndUpdate(
-            {_id: nodeData.id, mindmap: updateMindmap._id},
+            {_id: nodeData.id, mindmap: updatedMindmap._id},
             {content: nodeData.content, position: nodeData.position},
             {new: true}
         )
@@ -169,7 +169,7 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
             const newNode = new Node({
                 content: nodeData.content,
                 position: nodeData.position,
-                mindmap: updateMindmap
+                mindmap: updatedMindmap
             });
             const savedNode = await newNode.save();
             nodeMap.set(nodeData.id, savedNode._id);
@@ -195,7 +195,7 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
         if (edgesData.id) {
 
             await Edge.findByIdAndUpdate(
-                {_id: edgesData.id, mindmap: updateMindmap._id},
+                {_id: edgesData.id, mindmap: updatedMindmap._id},
                 {source: sourceId, target: targetId}
             );
             
@@ -204,7 +204,7 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
             const newEdge = new Edge({
                source: new mongoose.Types.ObjectId(sourceId),
                target: new mongoose.Types.ObjectId(targetId),
-               mindmap: updateMindmap._id, 
+               mindmap: updatedMindmap._id, 
             });
             await newEdge.save();
         }
@@ -218,7 +218,7 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
 
     await Promise.all(edgePromise);
     console.log("Edges procesados (creados/actualizados");
-    return updateMindmap
+    return updatedMindmap
     
     } catch (error) {
         console.error("Error al actualizar el mapa mental:", error);

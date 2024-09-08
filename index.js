@@ -145,9 +145,9 @@ wss.on('connection', async (ws, req) => {
                         userId: ws.user.id
                     });
 
-                    if (updateMindmap) {
-                        ws.send(JSON.stringify({type: 'success', payload: updateMindmap}));
-                        console.log('Mapa mental actualizado:', updateMindmap)
+                    if (updatedMindmap) {
+                        ws.send(JSON.stringify({type: 'success', payload: updatedMindmap}));
+                        console.log('Mapa mental actualizado:', updatedMindmap)
                     } else {
                      ws.send(JSON.stringify({ type: 'error', message: 'No se pudo encontrar el mapa para actualizar' }));  
                     }
