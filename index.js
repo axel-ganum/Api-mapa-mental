@@ -83,7 +83,7 @@ wss.on('connection', async (ws, req) => {
                             userId: ws.user.id,
                         });
     
-                        ws.send(JSON.stringify({ type: 'success', payload: savedMindmap }));
+                        ws.send(JSON.stringify({ type: 'success', action:'saveMap', map: savedMindmap }));
                         console.log('Mapa mental guardado:', savedMindmap);
                     } catch (err) {
                         console.error('Error al guardar el mapa mental:', err);
@@ -101,7 +101,7 @@ wss.on('connection', async (ws, req) => {
                 const mapId = data.payload?.id;
     
                 if (!mapId) {
-                    ws.send(JSON.stringify({ type: 'error', message: 'ID de mapa no proporcionado' }));
+                    ws.send(JSON.stringify({ type: 'error',  message: 'ID de mapa no proporcionado' }));
                     return; 
                 }
     
@@ -114,7 +114,7 @@ wss.on('connection', async (ws, req) => {
                     }
                     
                     console.log('Enviando respuesta:', JSON.stringify({ type: 'success', map }))
-                    ws.send(JSON.stringify({ type: 'success', map }));
+                    ws.send(JSON.stringify({ type: 'success',action:'getMap', map }));
                 } catch (err) {
                     console.error('Error al obtener el mapa:', err);
                     ws.send(JSON.stringify({ type: 'error', message: 'Error al obtener el mapa' }));
@@ -146,7 +146,7 @@ wss.on('connection', async (ws, req) => {
                     });
 
                     if (updatedMindmap) {
-                        ws.send(JSON.stringify({type: 'success', payload: updatedMindmap}));
+                        ws.send(JSON.stringify({type: 'success', action:'updateMap', payload: updatedMindmap}));
                         console.log('Mapa mental actualizado:', updatedMindmap)
                     } else {
                      ws.send(JSON.stringify({ type: 'error', message: 'No se pudo encontrar el mapa para actualizar' }));  
