@@ -126,11 +126,11 @@ export const getMapById = async (mapId, userId) => {
    }
 }
 
-export const updateMindmap = async ({id, title, description, nodes, edges, thumbnail}) => {
+export const updateMindmap = async ({id, title, description, nodes, edges, thumbnail, userId}) => {
     console.log("Actualizando mapa mental");
    
 
-    if (!id || !title || !description || !nodes.length || !edges || !thumbnail) {
+    if (!id || !title || !description || !Array.isArray(nodes) || !nodes.length || !Array.isArray(edges) || !thumbnail) {
         console.log("Datos insuficientes para actualizar el mapa");
         
 
@@ -141,7 +141,7 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
     try {
     console.log("Actualizar el mapa mental con ID:", id);
     const updatedMindmap  = await Mindmap.findByIdAndUpdate(
-        {_id:id, user:userId},
+        {_id:id, userId:userId},
         {title, description, thumbnail},
         {new: true}
     )
@@ -173,7 +173,7 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
             });
             const savedNode = await newNode.save();
             nodeMap.set(nodeData.id, savedNode._id);
-            return savedNode;
+            return savedNode._id;
          
             
 
@@ -191,7 +191,8 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
             console.log(('Error: nodos no encontrados para los edges', edgesData));
             throw new Error("No se encontraron nodos para los edges");  
         }
-
+       
+        let newEdge
         if (edgesData.id) {
 
             await Edge.findByIdAndUpdate(
@@ -209,10 +210,10 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
             await newEdge.save();
         }
          await Node.findByIdAndUpdate(sourceId, {
-            $addToSet: { edges: edgeData.id || newEdge._id, children: targetId },
+            $addToSet: { edges: edgesData.id || newEdge._id, children: targetId },
          })
          await Node.findByIdAndUpdate(targetId, {
-            $addToSet: { edges: edgeData.id || newEdge._id },
+            $addToSet: { edges: edgesData.id || newEdge._id },
           });
     });
 
@@ -221,7 +222,7 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
     return updatedMindmap
     
     } catch (error) {
-        console.error("Error al actualizar el mapa mental:", error);
+        console.error("Error al actualizar el mapa mental:", error.message);
     throw new Error("Error al actualizar el mapa mental: " + error.message);
         
     }
