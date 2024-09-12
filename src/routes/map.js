@@ -127,7 +127,7 @@ export const getMapById = async (mapId, userId) => {
 }
 
 export const updateMindmap = async ({id, title, description, nodes, edges, thumbnail, userId}) => {
-    console.log("Actualizando mapa mental");
+    console.log("Actualizando mapa mental con Id:", id);
    
 
     if (!id || !title || !description || !Array.isArray(nodes) || !nodes.length || !Array.isArray(edges) || !thumbnail) {
@@ -139,7 +139,7 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
     }
 
     try {
-    console.log("Actualizar el mapa mental con ID:", id);
+    
     const updatedMindmap  = await Mindmap.findByIdAndUpdate(
         {_id:id, userId:userId},
         {title, description, thumbnail},
@@ -152,17 +152,30 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
         
     }
 
-    console.log("Mapa mental no encontrado o no pertenece al usuario ");
+    console.log("Mapa mental actualizado correctamente ");
 
     const nodeMap = new Map ();
     const nodePromise = nodes.map(async (nodeData) => {
-     if(nodeData.id) {
+
+        if(!nodeData.content) {
+            console.log("Error: El nodo no tiene contenido");
+            throw new Error("Cada nodo debe tener un contenido")
+            
+        }
+
+        const nodeId = mongoose.Types.ObjectId.isValid(nodeData.id) ? nodeData.id : undefined;
+
+     if(nodeId) {
 
         const updateNode =  await Node.findByIdAndUpdate(
-            {_id: nodeData.id, mindmap: updatedMindmap._id},
+            {_id:nodeId, mindmap: updatedMindmap._id},
             {content: nodeData.content, position: nodeData.position},
             {new: true}
         )
+
+        if(!updateNode) {
+          throw new Error(`No se pudo actualiza el nodo con IDn${nodeData.id}`)
+        }
         nodeMap.set(nodeData.id, updateNode._id);
         return updateNode._id;
         } else {
@@ -191,12 +204,11 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
             console.log(('Error: nodos no encontrados para los edges', edgesData));
             throw new Error("No se encontraron nodos para los edges");  
         }
-       
-        let newEdge
-        if (edgesData.id) {
+        let edgeId = mongoose.Types.ObjectId.isValid(edgesData.id) ? edgesData.id : null;
+        if (edgeId) {
 
             await Edge.findByIdAndUpdate(
-                {_id: edgesData.id, mindmap: updatedMindmap._id},
+                {_id: edgeId, mindmap: updatedMindmap._id},
                 {source: sourceId, target: targetId}
             );
             
@@ -207,7 +219,10 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
                target: new mongoose.Types.ObjectId(targetId),
                mindmap: updatedMindmap._id, 
             });
-            await newEdge.save();
+
+            const savedEdge = await newEdge.save();
+            edgeId = savedEdge._id; 
+        
         }
          await Node.findByIdAndUpdate(sourceId, {
             $addToSet: { edges: edgesData.id || newEdge._id, children: targetId },
