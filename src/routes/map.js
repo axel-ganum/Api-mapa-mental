@@ -205,30 +205,30 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
             throw new Error("No se encontraron nodos para los edges");  
         }
         let edgeId = mongoose.Types.ObjectId.isValid(edgesData.id) ? edgesData.id : null;
-        if (edgeId) {
-
-            await Edge.findByIdAndUpdate(
-                {_id: edgeId, mindmap: updatedMindmap._id},
-                {source: sourceId, target: targetId}
-            );
-            
-        } else {
+        if (!edgeId || edgesData.id.startsWith("reactflow__edge")) {
 
             const newEdge = new Edge({
                source: new mongoose.Types.ObjectId(sourceId),
                target: new mongoose.Types.ObjectId(targetId),
                mindmap: updatedMindmap._id, 
             });
-
+           
             const savedEdge = await newEdge.save();
             edgeId = savedEdge._id; 
+            
+        } else {
+
+            await Edge.findByIdAndUpdate(
+                {_id: edgeId, mindmap: updatedMindmap._id},
+                {source: sourceId, target: targetId}
+            );
         
         }
          await Node.findByIdAndUpdate(sourceId, {
-            $addToSet: { edges: edgesData.id || newEdge._id, children: targetId },
+            $addToSet: { edges: edgeId || newEdge._id, children: targetId },
          })
          await Node.findByIdAndUpdate(targetId, {
-            $addToSet: { edges: edgesData.id || newEdge._id },
+            $addToSet: { edges: edgeId|| newEdge._id },
           });
     });
 
