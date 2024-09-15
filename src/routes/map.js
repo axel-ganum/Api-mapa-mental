@@ -243,3 +243,19 @@ export const updateMindmap = async ({id, title, description, nodes, edges, thumb
     }
 }
 
+export const deleteNodeFromDatabase = async (nodeId) => {
+
+    try {
+        await Edge.deleteMany({$or: [{source: nodeId}, {target: nodeId}]});
+        
+        const result = await Node.findByIdAndDelete(nodeId);
+
+        if(!result) {
+            throw new Error('Nodo no encontrado')
+        }
+        console.log('Nodo eliminado');
+        
+    } catch (error){
+        throw new Error('Eroor al eliminar nodo' + error.message)
+    }
+}

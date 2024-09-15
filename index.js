@@ -9,7 +9,7 @@ import map from './src/middlewares/veryfyToken.js';
 import maps from './src/routes/maps.js'
 import authMiddleware from './src/middlewares/authMiddleware.js'; // Corregido: Se cambió 'authMiddlewere' a 'authMiddleware'
 import cors from 'cors';
-import { createMindmap, getMapById, updateMindmap} from './src/routes/map.js';
+import { createMindmap, getMapById, updateMindmap,deleteNodeFromDatabase} from './src/routes/map.js';
 import authenticateToken from './src/middlewares/authenticateToken.js';
 dotenv.config();
 
@@ -156,6 +156,24 @@ wss.on('connection', async (ws, req) => {
                     console.error('Error al actualizar el mapa mental:', error);
                         ws.send(JSON.stringify({ type: 'error', message: 'Error al actualizar el mapa mental' }));
                  }
+               }else if (data.action === 'deleteNode') {
+                const nodeId = data.nodeId
+                try {
+                    
+                    await deleteNodeFromDatabase(nodeId);
+
+                    ws.send(JSON.stringify({
+                        type: 'success',
+                        action: 'deleteNode',
+                        nodeId: nodeId
+                    }));
+                } catch (error) {
+                    console.error('Error al eliminar nodo:', error);
+                    ws.send(JSON.stringify({
+                        type: 'error',
+                        message: 'Error al eliminar nodo'
+                    }))
+                }
                }
             }
             else {
