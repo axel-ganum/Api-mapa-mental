@@ -114,28 +114,28 @@ wss.on('connection', async (ws, req) => {
                     }
                     
                     console.log('Enviando respuesta:', JSON.stringify({ type: 'success', map }))
-                    ws.send(JSON.stringify({ type: 'success',action:'getMap', map }));
+                    ws.send(JSON.stringify({ type: 'success', action:'getMap', map }));
                 } catch (err) {
                     console.error('Error al obtener el mapa:', err);
                     ws.send(JSON.stringify({ type: 'error', message: 'Error al obtener el mapa' }));
                 }
     
             } 
-             
+            // Manejo de la acción 'updateMap'
             else if (data.action === 'updateMap') {
                console.log("Tipo de acción 'updateMap' reconocida");
                
                if(data.payload) {
-                 const {id, title, description, nodes, edges, thumbnail} = data.payload;
-
-                 if(!id || !title || !description || !Array.isArray(nodes) || !Array.isArray(edges)) {
+                 const { id, title, description, nodes, edges, thumbnail } = data.payload;
+    
+                 if (!id || !title || !description || !Array.isArray(nodes) || !Array.isArray(edges)) {
                      ws.send(JSON.stringify({ type: 'error', message: 'Datos insuficientes o mal formateados para actualizar el mapa' }));
-                        return;
+                     return;
                  }
                  
                  try {
-                    console.log('Actualizando mapa menntal con ID:', id);
-                    const updatedMindmap = await updateMindmap ({
+                    console.log('Actualizando mapa mental con ID:', id);
+                    const updatedMindmap = await updateMindmap({
                         id,
                         title,
                         description,
@@ -144,37 +144,47 @@ wss.on('connection', async (ws, req) => {
                         thumbnail,
                         userId: ws.user.id
                     });
-
+    
                     if (updatedMindmap) {
-                        ws.send(JSON.stringify({type: 'success', action:'updateMap', map: updatedMindmap}));
-                        console.log('Mapa mental actualizado:', updatedMindmap)
+                        ws.send(JSON.stringify({ type: 'success', action: 'updateMap', map: updatedMindmap }));
+                        console.log('Mapa mental actualizado:', updatedMindmap);
                     } else {
-                     ws.send(JSON.stringify({ type: 'error', message: 'No se pudo encontrar el mapa para actualizar' }));  
+                        ws.send(JSON.stringify({ type: 'error', message: 'No se pudo encontrar el mapa para actualizar' }));  
                     }
                     
                  } catch (error) {
                     console.error('Error al actualizar el mapa mental:', error);
-                        ws.send(JSON.stringify({ type: 'error', message: 'Error al actualizar el mapa mental' }));
+                    ws.send(JSON.stringify({ type: 'error', message: 'Error al actualizar el mapa mental' }));
                  }
-               }else if (data.action === 'deleteNode') {
-                const nodeId = data.nodeId
+               }
+            } 
+            // Manejo de la acción 'deleteNode'
+            else if (data.action === 'deleteNode') {
+                console.log("Tipo de acción 'deleteNode' reconocida");
+    
+                const nodeId = data.nodeId;
+                if (!nodeId) {
+                    ws.send(JSON.stringify({ type: 'error', message: 'ID de nodo no proporcionado' }));
+                    return;
+                }
+    
                 try {
-                    
+                    // Intentar eliminar el nodo de la base de datos
                     await deleteNodeFromDatabase(nodeId);
-
+    
                     ws.send(JSON.stringify({
                         type: 'success',
                         action: 'deleteNode',
                         nodeId: nodeId
                     }));
+                    console.log(`Nodo con ID ${nodeId} eliminado exitosamente`);
                 } catch (error) {
                     console.error('Error al eliminar nodo:', error);
                     ws.send(JSON.stringify({
                         type: 'error',
                         message: 'Error al eliminar nodo'
-                    }))
+                    }));
                 }
-               }
             }
             else {
                 ws.send(JSON.stringify({ type: 'error', message: 'Acción desconocida' }));
@@ -187,10 +197,11 @@ wss.on('connection', async (ws, req) => {
         }
     });
     
-    // Manejo de cierre de la conexión
-    ws.on('close', () => {
-        console.log('Cliente desconectado');
-    });
+            
+            // Manejo de cierre de la conexión
+            ws.on('close', () => {
+                console.log('Cliente desconectado');
+            });
     
  
 
