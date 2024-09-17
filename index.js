@@ -171,7 +171,7 @@ wss.on('connection', async (ws, req) => {
                 try {
                     // Intentar eliminar el nodo de la base de datos
                     await deleteNodeFromDatabase(nodeId);
-    
+                    console.log(`Nodo eliminado, enviando respuesta: ${nodeId}`)
                     ws.send(JSON.stringify({
                         type: 'success',
                         action: 'deleteNode',

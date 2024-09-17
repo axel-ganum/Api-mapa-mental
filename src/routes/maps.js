@@ -18,5 +18,24 @@ try {
 }
 }) ;
 
+router.delete('/:id', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const mapId = req.params.id;
+
+        const map = await Mindmap.findOne({_id: mapId, user: userId});
+        if(!map) {
+       return res.status(404).json({messages: 'Mapa no encontrado o no autorizado para eliminar'});
+
+        }
+        
+        await Mindmap.findByIdAndDelete(mapId);
+        res.status(200).json({messages: 'Mapa eliminado exitosammente'})
+    } catch (error) {
+        console.error('Error al eliminar el mapa');
+        
+    }
+});
+
 
 export default router;
