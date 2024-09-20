@@ -259,3 +259,23 @@ export const deleteNodeFromDatabase = async (nodeId) => {
         throw new Error('Eroor al eliminar nodo' + error.message)
     }
 }
+
+export const shareMapWithUser = async (mapId, userIdToShare) => {
+    try {
+        const mindmap = await Mindmap.findById(mapId);
+        if (!mindmap) {
+            throw new Error('Mapa no encontrado');
+        }
+
+        if(userIdToShare && !mindmap.sharedWith.includes(userIdToShare)) {
+            mindmap.sharedWith.push(userIdToShare);
+            await mindmap.save();
+            return {success: false, message: 'Mapa compartido exitosamente'};
+        } else {
+            return {success: false, message: 'El usuario ya tiene acceso o no se proporciono el ID'};
+
+        }
+    } catch (error) {
+        throw new Error('Error al compartir el mapa' + error.message)
+    }
+}
