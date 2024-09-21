@@ -189,19 +189,24 @@ wss.on('connection', async (ws, req) => {
             } else if (data.action === 'shareMpa') {
                 console.log("Tipo de accion 'shareMap' reconovido");
                 
-                const {mapId, userIdToShare} = data.payload;
+                const {mapId, emailToShare} = data.payload;
 
-                if(!mapId || !userIdToShare) {
+                if(!mapId || !emailToShare) {
                     ws.send(JSON.stringify({type: 'error', message: 'Datos insuficientes para compartir el mapa'}));
                     return;
                 }
 
                 try {
-                    const result = await shareMapWithUser(mapId, userIdToShare);
+
+                    const userToShare = await User.findOne({email: emailToShare});
+                    if(!userToShare) {
+                        ws.send(JSON.stringify({type: 'error', message: 'No se encontró un usuario con ese correo electrónico'}))
+                    }
+                    const result = await shareMapWithUser(mapId, userToShare._id);
 
                     if(result.success) {
                         ws.send(JSON.stringify({type: 'success', action:'shareMpa', message: result.message}));
-                        console.log(`Mapa con ID ${mapId} compartido con el usuario ${userIdToShare}`);
+                        console.log(`Mapa con ID ${mapId} compartido con el usuario ${userToShare.email}`);
                         
                     }
                 } catch (error) {

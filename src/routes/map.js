@@ -260,15 +260,20 @@ export const deleteNodeFromDatabase = async (nodeId) => {
     }
 }
 
-export const shareMapWithUser = async (mapId, userIdToShare) => {
+export const shareMapWithUser = async (mapId, emailToShare) => {
     try {
+
+        const userToShare = await User.findOne({email: emailToShare});
+        if(!userToShare) {
+            return {success:false, message:'No se encontró un usuario con ese correo elctrónico'}
+        }
         const mindmap = await Mindmap.findById(mapId);
         if (!mindmap) {
-            throw new Error('Mapa no encontrado');
+            return {success: false, message: 'Mapa no encontrado'}
         }
 
-        if(userIdToShare && !mindmap.sharedWith.includes(userIdToShare)) {
-            mindmap.sharedWith.push(userIdToShare);
+        if(!mindmap.sharedWith.includes(userToShare.id)) {
+            mindmap.sharedWith.push(userToShare._id);
             await mindmap.save();
             return {success: false, message: 'Mapa compartido exitosamente'};
         } else {
