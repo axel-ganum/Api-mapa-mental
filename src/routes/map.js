@@ -2,6 +2,7 @@ import Mindmap from '../models/mapModel.js'; // Corregido: Se añadió el punto 
 import Node from '../models/node.js'; // Corregido: Se añadió el punto y coma al final de la importación
 import Edge from '../models/edgesModel.js';
 import mongoose from 'mongoose';
+import User from '../models/userModel.js';
 
 
 
@@ -262,20 +263,33 @@ export const deleteNodeFromDatabase = async (nodeId) => {
 
 export const shareMapWithUser = async (mapId, emailToShare) => {
     try {
-
-        const userToShare = await User.findOne({email: emailToShare});
+        console.log("Buscando usuario con email:", emailToShare);
+        const emailTimerimmed = emailToShare.trim()
+        const userToShare = await User.findOne({email: emailTimerimmed});
         if(!userToShare) {
+            console.log("Usuario no encontrado")
             return {success:false, message:'No se encontró un usuario con ese correo elctrónico'}
+
         }
+
+         console.log("Usuario encontrado", userToShare);
+
+         console.log("Buscando mapa con ID:", mapId);
+         
+         
         const mindmap = await Mindmap.findById(mapId);
         if (!mindmap) {
             return {success: false, message: 'Mapa no encontrado'}
         }
 
-        if(!mindmap.sharedWith.includes(userToShare.id)) {
+        console.log("Mapa encontrado:", mindmap);
+        
+           
+        if(!mindmap.sharedWith.includes(userToShare._id)) {
+            console.log("Compartiendo mapa con el usuario...")
             mindmap.sharedWith.push(userToShare._id);
             await mindmap.save();
-            return {success: false, message: 'Mapa compartido exitosamente'};
+            return {success: true, message: 'Mapa compartido exitosamente'};
         } else {
             return {success: false, message: 'El usuario ya tiene acceso o no se proporciono el ID'};
 

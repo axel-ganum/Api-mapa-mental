@@ -10,8 +10,8 @@ import maps from './src/routes/maps.js'
 import authMiddleware from './src/middlewares/authMiddleware.js'; // Corregido: Se cambió 'authMiddlewere' a 'authMiddleware'
 import cors from 'cors';
 import { createMindmap, getMapById, updateMindmap,deleteNodeFromDatabase, shareMapWithUser} from './src/routes/map.js';
+import User from './src/models/userModel.js';
 import authenticateToken from './src/middlewares/authenticateToken.js';
-import { log } from 'console';
 dotenv.config();
 
 const app = express();
@@ -186,8 +186,8 @@ wss.on('connection', async (ws, req) => {
                         message: 'Error al eliminar nodo'
                     }));
                 }
-            } else if (data.action === 'shareMpa') {
-                console.log("Tipo de accion 'shareMap' reconovido");
+            } else if (data.action === 'shareMap') {
+                console.log("Tipo de accion 'shareMap' reconocido");
                 
                 const {mapId, emailToShare} = data.payload;
 
@@ -198,14 +198,14 @@ wss.on('connection', async (ws, req) => {
 
                 try {
 
-                    const userToShare = await User.findOne({email: emailToShare});
+                    const userToShare = await User.findOne({email: emailToShare.trim()});
                     if(!userToShare) {
                         ws.send(JSON.stringify({type: 'error', message: 'No se encontró un usuario con ese correo electrónico'}))
                     }
-                    const result = await shareMapWithUser(mapId, userToShare._id);
+                    const result = await shareMapWithUser(mapId, emailToShare);
 
                     if(result.success) {
-                        ws.send(JSON.stringify({type: 'success', action:'shareMpa', message: result.message}));
+                        ws.send(JSON.stringify({type: 'success', action:'shareMap', message: result.message}));
                         console.log(`Mapa con ID ${mapId} compartido con el usuario ${userToShare.email}`);
                         
                     }
