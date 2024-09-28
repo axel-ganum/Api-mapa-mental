@@ -14,6 +14,8 @@ import User from './src/models/userModel.js';
 import authenticateToken from './src/middlewares/authenticateToken.js';
 dotenv.config();
 
+const connectectedUsers = {};
+
 const app = express();
 app.use(cors({
     origin: 'http://localhost:5173'
@@ -37,9 +39,16 @@ app.use('/maps', authMiddleware, maps)
 wss.on('connection', async (ws, req) => {
     const token = req.url.split('?token=')[1];
     console.log('Token recibido:', token);
+    
     try {
-        ws.user = await authenticateToken(token)
+        const user = await authenticateToken(token)
+        ws.user = user
         console.log('Usuario autenticado:', ws.user)
+    
+ 
+        connectectedUsers[ws.user.id] = ws;
+       
+    
     } catch (err) {
         console.error('Error al autenticar el token:', err);
         ws.close();
@@ -52,6 +61,7 @@ wss.on('connection', async (ws, req) => {
             console.log("Mensaje recibido como Buffer, convirtiéndolo...");
             message = message.toString();
         }
+
         
         try {
             const data = JSON.parse(message);  // Intentar parsear el mensaje recibido
@@ -226,16 +236,14 @@ wss.on('connection', async (ws, req) => {
     });
     
             
-            // Manejo de cierre de la conexión
-            ws.on('close', () => {
-                console.log('Cliente desconectado');
-            });
-    
+        
  
 
     ws.on('close', () => {
+        if(connectectedUsers[ws.user.id]){
+            delete connectectedUsers[ws.user.id];
+        }
         console.log('Cliente desconectado');
-
     });
 
 

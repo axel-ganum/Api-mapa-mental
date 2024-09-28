@@ -3,6 +3,7 @@ import Node from '../models/node.js'; // Corregido: Se añadió el punto y coma 
 import Edge from '../models/edgesModel.js';
 import mongoose from 'mongoose';
 import User from '../models/userModel.js';
+import Notification from '../models/NotificationSchema.js'
 
 
 
@@ -261,7 +262,7 @@ export const deleteNodeFromDatabase = async (nodeId) => {
     }
 }
 
-export const shareMapWithUser = async (mapId, emailToShare) => {
+export const shareMapWithUser = async (mapId, emailToShare, connectectedUsers) => {
     try {
         console.log("Buscando usuario con email:", emailToShare);
         const emailTimerimmed = emailToShare.trim()
@@ -289,6 +290,23 @@ export const shareMapWithUser = async (mapId, emailToShare) => {
             console.log("Compartiendo mapa con el usuario...")
             mindmap.sharedWith.push(userToShare._id);
             await mindmap.save();
+
+         
+        const notification = new Notification({
+           user: userToShare._id,
+           message: `Te han compartido un mapa:${mindmap.title}`, 
+           seen: false
+        })
+      
+        await notification.save();
+
+            const userSocket = connectectedUsers[userToShare._id];
+            if(userSocket) {
+                userSocket.send(JSON.stringify({
+                    type:'notification',
+                    message: `Te han compartido un mapa: ${mindmap.title}`
+                }))
+            }
             return {success: true, message: 'Mapa compartido exitosamente'};
         } else {
             return {success: false, message: 'El usuario ya tiene acceso o no se proporciono el ID'};
