@@ -11,7 +11,12 @@ try {
     .populate('user', 'username')
     .select('title description createdAt updatedAt thumbnail user')
     
-    res.json(maps)
+    const shareMaps = await Mindmap.find({sharedWith: userId}, 'title description createdAt updatedAt thumbnail' )
+    .populate('user', 'username')
+    .select('title description createdAt updatedAt thumbnail user');
+
+    const allMaps = [...maps, ...shareMaps];
+    res.json(allMaps)
 
 }catch (error) {
     res.status(500).json({messages: 'Error al obtener los mapas'})
@@ -52,26 +57,6 @@ router.get('/maps/:mapid', authMiddleware, async (req, res) => {
     }
 })
 
-router.post('/share/:mapId', authMiddleware, async (req, res) => {
-    const {mapId} = req.params;
-    const {userIdToShare} = req.body;
-
-    try {
-        const mindmap = await Mindmap.findById(mapId);
-        if(!mindmap) {
-            return res.status(404).json({message: 'Mapa no encontrado'});
-        }
-
-        if(userIdToShare && !mindmap.sharedWith.includes(userIdToShare)) {
-            mindmap.sharedWith.push(userIdToShare);
-        }
-
-        await mindmap.save();
-        res.json({message: 'Mapa compartido exitosamente'})
-    } catch (error) {
-        res.status(500).json({message: 'Error al compartir el mapa'})
-    }
-})
 
 
 
