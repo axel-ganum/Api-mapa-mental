@@ -12,6 +12,7 @@ import cors from 'cors';
 import { createMindmap, getMapById, updateMindmap,deleteNodeFromDatabase, shareMapWithUser} from './src/routes/map.js';
 import User from './src/models/userModel.js';
 import authenticateToken from './src/middlewares/authenticateToken.js';
+import Mindmap from './src/models/mapModel.js';
 dotenv.config();
 
 const connectectedUsers = {};
@@ -146,22 +147,34 @@ wss.on('connection', async (ws, req) => {
                  
                  try {
                     console.log('Actualizando mapa mental con ID:', id);
-                    const updatedMindmap = await updateMindmap({
-                        id,
-                        title,
-                        description,
-                        nodes,
-                        edges,
-                        thumbnail,
-                        userId: ws.user.id
-                    });
-    
-                    if (updatedMindmap) {
-                        ws.send(JSON.stringify({ type: 'success', action: 'updateMap', map: updatedMindmap }));
-                        console.log('Mapa mental actualizado:', updatedMindmap);
-                    } else {
-                        ws.send(JSON.stringify({ type: 'error', message: 'No se pudo encontrar el mapa para actualizar' }));  
+                    const mindmap = await Mindmap.findById(id);
+
+                    if(!mindmap) {
+                        ws.send(JSON.stringify({type: 'error', message: 'No se pudo encontrar el mapa para actualizar'}));
+                        return;
                     }
+
+                    const isOwner = mindmap.user.toStrin() === ws.user.id;
+                    const isSharedWithUser = mindmap.sharedWith.some(sharedUserId => sharedUserId.toString() === ws.user.id);
+
+                    if(!isOwner && !isSharedWithUser) {
+                        ws.send(JSON.stringify({type: 'error', message:'No tenes permiso para actualizar este mapa'}));
+                        return
+                    }
+                    
+                    mindmap.title = title;
+                    mindmap.description = description;
+                    mindmap.nodes = nodes;
+                    mindmap.edges = edges;
+                    mindmap.thumbnail = thumbnail;
+
+                    await mindmap.save();
+    
+                  
+                        ws.send(JSON.stringify({ type: 'success', action: 'updateMap', map: mindmap }));
+                        console.log('Mapa mental actualizado:', mindmap);
+                    
+                    
                     
                  } catch (error) {
                     console.error('Error al actualizar el mapa mental:', error);
