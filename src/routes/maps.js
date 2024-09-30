@@ -1,7 +1,7 @@
 import express from 'express';
 import Mindmap from '../models/mapModel.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
-
+import Notication from '../models/NotificationSchema.js';
 const router = express.Router();
 
 router.get('/all', authMiddleware, async(req, res) => {
@@ -58,6 +58,23 @@ router.get('/maps/:mapid', authMiddleware, async (req, res) => {
 })
 
 
+ router.get('/notifications', authMiddleware, async(req, res) => {
+    try {
+        const userId = req.user.id;
+        const notifications = await Notication.find({user: userId, seen: false}).sort({createdAt: -1});
+        res.json(notifications);
+    }catch (error) {
+        res.status(500).json({message:'Error al obtener las notificaciones'})
+    }
+ })
 
-
+ router.put('/notifications/:id/marKAsrRead', authMiddleware, async (req, res) => {
+    try {
+        const notificationId = req.params.id;
+        await Notication.findByIdAndUpdate(notificationId, {seen: true});
+          res.json({succes: true, message: 'Notificación marcada como leida'})
+    } catch (error) {
+        res.status(500).json({message: 'Error al marcar la notificación como leida'})
+    }
+ })
 export default router;
