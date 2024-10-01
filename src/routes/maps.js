@@ -77,4 +77,17 @@ router.get('/maps/:mapid', authMiddleware, async (req, res) => {
         res.status(500).json({message: 'Error al marcar la notificación como leida'})
     }
  })
+
+ router.get('/unread', authMiddleware, async (req,res) => {
+    try {
+        const userId = req.user.id;
+
+        const notificationsCount = await Notification.countDocuments({user: userId, seen: false  });
+
+        res.status(200).json({unreadCount: notificationsCount});
+    } catch (error) {
+        console.error('Error al obtener notificaciones no leidas' ,error);
+        res.status(500).json({error:'Error al obtener las notificaciones'});
+    }
+ })
 export default router;
