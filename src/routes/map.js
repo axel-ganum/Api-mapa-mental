@@ -4,6 +4,7 @@ import Edge from '../models/edgesModel.js';
 import mongoose from 'mongoose';
 import User from '../models/userModel.js';
 import Notification from '../models/NotificationSchema.js'
+import { sendPendingNotifications } from '../uploads/send.js';
 
 
 
@@ -302,10 +303,16 @@ export const shareMapWithUser = async (mapId, emailToShare, connectectedUsers) =
 
             const userSocket = connectectedUsers[userToShare._id];
             if(userSocket) {
+                console.log("Usuario conectado, se enviará la notificacion por websocket...");
+                
                 userSocket.send(JSON.stringify({
                     type:'notification',
                     message: `Te han compartido un mapa: ${mindmap.title}`
                 }))
+            } else {
+                console.log("Usuario no conectado, se enviará la notificacio  cuando se conecte.");
+                
+                await sendPendingNotifications(userToShare._id)
             }
             return {success: true, message: 'Mapa compartido exitosamente'};
         } else {

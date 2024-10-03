@@ -15,7 +15,7 @@ try {
     .populate('user', 'username')
     .select('title description createdAt updatedAt thumbnail user');
 
-    const allMaps = [...maps, ...shareMaps];
+    const allMaps = maps.concat(shareMaps);
     res.json(allMaps)
 
 }catch (error) {
@@ -68,7 +68,7 @@ router.get('/maps/:mapid', authMiddleware, async (req, res) => {
     }
  })
 
- router.put('/notifications/:id/marKAsrRead', authMiddleware, async (req, res) => {
+ router.put('/notifications/:id', authMiddleware, async (req, res) => {
     try {
         const notificationId = req.params.id;
         await Notication.findByIdAndUpdate(notificationId, {seen: true});
