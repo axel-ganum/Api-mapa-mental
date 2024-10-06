@@ -13,6 +13,7 @@ import { createMindmap, getMapById, updateMindmap,deleteNodeFromDatabase, shareM
 import User from './src/models/userModel.js';
 import authenticateToken from './src/middlewares/authenticateToken.js';
 import Mindmap from './src/models/mapModel.js';
+import { type } from 'os';
 dotenv.config();
 
 const connectectedUsers = {};
@@ -236,7 +237,41 @@ wss.on('connection', async (ws, req) => {
                    console.error('Error al compartir el mapa:', error);
                    ws.send(JSON.stringify({type:'error', message: 'Error al compartir el mapa'}))
                 }
-            } 
+            } else if (data.action === 'mark_as_read') {
+                console.log("Accion 'mark_as_rea desconocida");
+                
+                const {notificationId} = data.payload;
+                if (!notificationId) {
+                    ws.send(JSON.stringify({type: 'error', message: 'ID de notificacion no proporcionado'}));
+                try {
+                  const notification = await Notification.findById(notificationId);
+
+                   if (!notification) {
+                    ws.send(JSON.stringify({type:'error', message: 'Notificacion no encotrada'}))
+                   }
+
+                   notification.seen = true;
+                   await notification.save();
+
+                   ws.send(JSON.stringify({type: 'success', action: 'mark_as_read', message: 'Notificacion maracada como leida'}));
+
+                   const userNotifications = await Notification.find({userId: notification.userId});
+                   const unreadCount = userNotifications.filter(n => !n.seen).length;
+
+                   ws.send(JSON.stringify({
+                    type: 'mark_as_read',
+                    payload: {
+                        notification: userNotifications,
+                        unreadCount: unreadCount
+                    }
+                   }))
+                } catch(error) {
+                console.error ('Error al maracar como leida', error);
+                ws.send(JSON.stringify({type:'error', message:'Error al marcar la notificacion como leida'}))
+                }
+                    
+                }
+            }
             else {
                 ws.send(JSON.stringify({ type: 'error', message: 'Acción desconocida' }));
             }

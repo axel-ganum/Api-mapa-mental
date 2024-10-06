@@ -301,13 +301,16 @@ export const shareMapWithUser = async (mapId, emailToShare, connectectedUsers) =
       
         await notification.save();
 
+        const unreasCount = await Notification.countDocuments({user: userToShare._id, seen: false});
+
             const userSocket = connectectedUsers[userToShare._id];
             if(userSocket) {
                 console.log("Usuario conectado, se enviará la notificacion por websocket...");
                 
                 userSocket.send(JSON.stringify({
                     type:'notification',
-                    message: `Te han compartido un mapa: ${mindmap.title}`
+                    message: `Te han compartido un mapa: ${mindmap.title}`,
+                    unreasCount: unreasCount
                 }))
             } else {
                 console.log("Usuario no conectado, se enviará la notificacio  cuando se conecte.");

@@ -1,5 +1,5 @@
-import { type } from "os";
-import Notification from "../models/NotificationSchema"
+
+import Notification from "../models/NotificationSchema.js"
 
 export const sendPendingNotifications = async (userId) => {
 
