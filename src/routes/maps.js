@@ -59,37 +59,7 @@ router.get('/maps/:mapid', authMiddleware, async (req, res) => {
 })
 
 
- router.get('/notifications', authMiddleware, async(req, res) => {
-    try {
-        const userId = req.user.id;
-        const notifications = await Notication.find({user: userId, seen: false}).sort({createdAt: -1});
-        res.json(notifications);
-    }catch (error) {
-        res.status(500).json({message:'Error al obtener las notificaciones'})
-    }
- })
 
- router.put('/notifications/:id', authMiddleware, async (req, res) => {
-    try {
-        const notificationId = req.params.id;
 
-        await Notification.findByIdAndUpdate(notificationId, {seen: true});
-          res.json({succes: true, message: 'Notificación marcada como leida'})
-    } catch (error) {
-        res.status(500).json({message: 'Error al marcar la notificación como leida'})
-    }
- })
 
- router.get('/unread', authMiddleware, async (req,res) => {
-    try {
-        const userId = req.user.id;
-
-        const notificationsCount = await Notification.countDocuments({user: userId, seen: false  });
-
-        res.status(200).json({unreadCount: notificationsCount});
-    } catch (error) {
-        console.error('Error al obtener notificaciones no leidas' ,error);
-        res.status(500).json({error:'Error al obtener las notificaciones'});
-    }
- })
 export default router;

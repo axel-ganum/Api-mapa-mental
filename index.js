@@ -13,7 +13,9 @@ import { createMindmap, getMapById, updateMindmap,deleteNodeFromDatabase, shareM
 import User from './src/models/userModel.js';
 import authenticateToken from './src/middlewares/authenticateToken.js';
 import Mindmap from './src/models/mapModel.js';
-import { type } from 'os';
+import  {sendPendingNotifications } from './src/uploads/send.js';
+import Notification from './src/models/NotificationSchema.js';
+
 dotenv.config();
 
 const connectectedUsers = {};
@@ -47,8 +49,10 @@ wss.on('connection', async (ws, req) => {
         ws.user = user
         console.log('Usuario autenticado:', ws.user)
     
- 
+       
         connectectedUsers[ws.user.id] = ws;
+
+        sendPendingNotifications(ws.user.id, connectectedUsers);
        
     
     } catch (err) {
@@ -226,7 +230,7 @@ wss.on('connection', async (ws, req) => {
                     if(!userToShare) {
                         ws.send(JSON.stringify({type: 'error', message: 'No se encontró un usuario con ese correo electrónico'}))
                     }
-                    const result = await shareMapWithUser(mapId, emailToShare);
+                    const result = await shareMapWithUser(mapId, emailToShare, connectectedUsers);
 
                     if(result.success) {
                         ws.send(JSON.stringify({type: 'success', action:'shareMap', message: result.message}));
@@ -235,50 +239,56 @@ wss.on('connection', async (ws, req) => {
                     }
                 } catch (error) {
                    console.error('Error al compartir el mapa:', error);
-                   ws.send(JSON.stringify({type:'error', message: 'Error al compartir el mapa'}))
+                   ws.send(JSON.stringify({action:'error', message: 'Error al compartir el mapa'}))
                 }
-            } else if (data.action === 'mark_as_read') {
-                console.log("Accion 'mark_as_rea desconocida");
-                
-                const {notificationId} = data.payload;
+            } else if (data.action === 'mark_as_read') { 
+                console.log("Acción 'mark_as_read' recibida");
+            
+                const { notificationId } = data;
                 if (!notificationId) {
-                    ws.send(JSON.stringify({type: 'error', message: 'ID de notificacion no proporcionado'}));
-                try {
-                  const notification = await Notification.findById(notificationId);
-
-                   if (!notification) {
-                    ws.send(JSON.stringify({type:'error', message: 'Notificacion no encotrada'}))
-                   }
-
-                   notification.seen = true;
-                   await notification.save();
-
-                   ws.send(JSON.stringify({type: 'success', action: 'mark_as_read', message: 'Notificacion maracada como leida'}));
-
-                   const userNotifications = await Notification.find({userId: notification.userId});
-                   const unreadCount = userNotifications.filter(n => !n.seen).length;
-
-                   ws.send(JSON.stringify({
-                    type: 'mark_as_read',
-                    payload: {
-                        notification: userNotifications,
-                        unreadCount: unreadCount
-                    }
-                   }))
-                } catch(error) {
-                console.error ('Error al maracar como leida', error);
-                ws.send(JSON.stringify({type:'error', message:'Error al marcar la notificacion como leida'}))
+                    ws.send(JSON.stringify({ action: 'error', message: 'ID de notificación no proporcionado' }));
+                    return;
                 }
-                    
+            
+                try {
+                    const notification = await Notification.findById(notificationId);
+            
+                    if (!notification) {
+                        ws.send(JSON.stringify({ action: 'error', message: 'Notificación no encontrada' }));
+                        return;
+                    }
+            
+                    // Marcar la notificación como leída
+                    notification.seen = true;
+                    await notification.save();
+            
+                    // Obtener todas las notificaciones del usuario y contar las no leídas
+                    const userNotifications = await Notification.find({ user: notification.user });
+                    const unreadCount = userNotifications.filter(n => !n.seen).length;
+            
+                    // Enviar respuesta al cliente con la notificación actualizada y el recuento de no leídas
+                    ws.send(JSON.stringify({
+                        action: 'mark_as_read',
+                        payload: {
+                            notification: notification,
+                            unreadCount: unreadCount
+                        },
+                        message: 'Notificación marcada como leída'
+                    }));
+            
+                } catch (error) {
+                    console.error('Error al marcar como leída:', error);
+                    ws.send(JSON.stringify({ action: 'error', message: 'Error al marcar la notificación como leída' }));
                 }
             }
+            
             else {
                 ws.send(JSON.stringify({ type: 'error', message: 'Acción desconocida' }));
             }
     
         } catch (error) {
             // Manejo de errores en el formato del mensaje
-            ws.send(JSON.stringify({ type: 'error', message: 'Formato de mensaje inválido' }));
+            ws.send(JSON.stringify({ action: 'error', message: 'Formato de mensaje inválido' }));
             console.error('Error al procesar el mensaje:', error);
         }
     });
