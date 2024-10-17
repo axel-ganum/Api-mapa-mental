@@ -91,7 +91,7 @@ export const createMindmap = async ({title, description, nodes, edges,thumbnail,
 
 export const getMapById = async (mapId, userId) => {
    try {
-     const map = await Mindmap.findOne({_id: mapId, user: userId});
+     const map = await Mindmap.findOne({_id: mapId, $or: [{user: userId}, {sharedWith: userId}]});
 
      if (!map) {
         console.log('Mapa no encontrado o no pertenece al usuario');
@@ -124,7 +124,7 @@ export const getMapById = async (mapId, userId) => {
     
    } catch (error) {
      console.error('Error al busacar el mapa', error);
-     throw err
+     throw error
    }
 }
 
