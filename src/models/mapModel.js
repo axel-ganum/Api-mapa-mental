@@ -5,7 +5,7 @@ const mindmapSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    description: { 
+    description: {
         type: String,
     },
     user: {
@@ -14,21 +14,30 @@ const mindmapSchema = new mongoose.Schema({
         required: true,
     },
     sharedWith: [
-         {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
+        { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     ],
     nodes: [
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Node',
+            default: [], // Inicializar como array vacío
         },
     ],
-thumbnail: {  
-    type: String,  
-    default: null,
-},
-},{ 
+    edges: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Edge',
+            default: [], // Inicializar como array vacío
+        },
+    ],
+    thumbnail: {
+        type: String,
+        default: null,
+    },
+}, {
     timestamps: true,
 });
+
 
 const Mindmap = mongoose.model('Mindmap', mindmapSchema);
 

@@ -16,6 +16,7 @@ import Mindmap from './src/models/mapModel.js';
 import  {sendPendingNotifications } from './src/uploads/send.js';
 import Notification from './src/models/NotificationSchema.js';
 
+
 dotenv.config();
 
 const connectectedUsers = {};
@@ -138,64 +139,65 @@ wss.on('connection', async (ws, req) => {
                 }
     
             } 
-            // Manejo de la acción 'updateMap'
             else if (data.action === 'updateMap') {
-               console.log("Tipo de acción 'updateMap' reconocida");
-               
-               if(data.payload) {
-                 const { id, title, description, nodes, edges, thumbnail } = data.payload;
-    
-                 if (!id || !title || !description || !Array.isArray(nodes) || !Array.isArray(edges)) {
-                     ws.send(JSON.stringify({ type: 'error', message: 'Datos insuficientes o mal formateados para actualizar el mapa' }));
-                     return;
-                 }
-                 
-                 try {
-                    console.log('Actualizando mapa mental con ID:', id);
-                    const mindmap = await Mindmap.findById(id);
-
-                    if(!mindmap) {
-                        ws.send(JSON.stringify({type: 'error', message: 'No se pudo encontrar el mapa para actualizar'}));
+                console.log("Tipo deacción 'updateMap' reconocida");
+                
+                if (data.payload) {
+                    const { id, title, description, nodes, edges, thumbnail } = data.payload;
+                    
+                    // Validación de datos
+                    if (!id || !Array.isArray(nodes) || !Array.isArray(edges) || !thumbnail) {
+                        ws.send(JSON.stringify({ type: 'error', message: 'Datos insuficientes o mal formateados para actualizar el mapa' }));
                         return;
                     }
-
-                    const isOwner = mindmap.user.toStrin() === ws.user.id;
-                    const isSharedWithUser = mindmap.sharedWith.some(sharedUserId => sharedUserId.toString() === ws.user.id);
-
-                    if(!isOwner && !isSharedWithUser) {
-                        ws.send(JSON.stringify({type: 'error', message:'No tenes permiso para actualizar este mapa'}));
-                        return
+                    
+                    try {
+                        console.log('Actualizando mapa mental con ID:', id);
+                        const updatedMap = await updateMindmap({
+                            id,
+                            title,
+                            description,
+                            nodes,
+                            edges,
+                            thumbnail,
+                            userId: ws.user.id,
+                        });
+                        
+                        if (updatedMap) {
+                            console.log('Mapa mental actualizado con nodos y aristas poblados:', updatedMap);
+                            
+                            // Enviar mapa actualizado al cliente que lo solicitó
+                            ws.send(JSON.stringify({ type: 'success', action: 'updateMap', map: updatedMap }));
+                            
+                            // Notificar a otros clientes conectados
+                            wss.clients.forEach((client) => {
+                                if (client.readyState === WebSocket.OPEN && client !== ws) { // Omitir al cliente que hizo la edición
+                                    client.send(JSON.stringify({ type: 'success', action: 'mapUpdated', map: updatedMap }));
+                                }
+                            });
+                            
+                        } else {
+                            ws.send(JSON.stringify({ type: 'error', message: 'No se pudo actualizar el mapa' }));
+                        }
+                    } catch (error) {
+                        console.error('Error al actualizar el mapa mental:', error);
+                        ws.send(JSON.stringify({ type: 'error', message: 'Error al actualizar el mapa mental' }));
                     }
-                    
-                    mindmap.title = title;
-                    mindmap.description = description;
-                    mindmap.nodes = nodes;
-                    mindmap.edges = edges;
-                    mindmap.thumbnail = thumbnail;
-
-                    await mindmap.save();
-    
-                  
-                        ws.send(JSON.stringify({ type: 'success', action: 'updateMap', map: mindmap }));
-                        console.log('Mapa mental actualizado:', mindmap);
-                    
-                    
-                    
-                 } catch (error) {
-                    console.error('Error al actualizar el mapa mental:', error);
-                    ws.send(JSON.stringify({ type: 'error', message: 'Error al actualizar el mapa mental' }));
-                 }
-               }
-            } 
+                }
+            }
+                
+            
             // Manejo de la acción 'deleteNode'
             else if (data.action === 'deleteNode') {
                 console.log("Tipo de acción 'deleteNode' reconocida");
-    
+                const mapId = data.mapId;
                 const nodeId = data.nodeId;
-                if (!nodeId) {
+                  console.log('mapId recibido:', mapId); // Verifica si `mapId` es `undefined` o tiene el valor correcto
+                  console.log('nodeId recibido:', nodeId);
+                    if (!nodeId) {
                     ws.send(JSON.stringify({ type: 'error', message: 'ID de nodo no proporcionado' }));
                     return;
-                }
+                 }
     
                 try {
                     // Intentar eliminar el nodo de la base de datos
@@ -204,8 +206,15 @@ wss.on('connection', async (ws, req) => {
                     ws.send(JSON.stringify({
                         type: 'success',
                         action: 'deleteNode',
+                        map: { _id:mapId},
                         nodeId: nodeId
                     }));
+
+                    wss.clients.forEach((client) => {
+                        if (client.readyState === WebSocket.OPEN && client !== ws) { 
+                            client.send(JSON.stringify({ type: 'success', action: 'nodeDeleted',map: { _id:mapId} , nodeId: nodeId }));
+                        }
+                    });
                     console.log(`Nodo con ID ${nodeId} eliminado exitosamente`);
                 } catch (error) {
                     console.error('Error al eliminar nodo:', error);

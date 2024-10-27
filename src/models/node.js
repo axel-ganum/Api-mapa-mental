@@ -1,20 +1,13 @@
 import mongoose from 'mongoose';
 
-
 const nodeSchema = new mongoose.Schema({
     content: {
         type: String,
-        required: true, // Aquí guardas el texto directamente
+        required: true,
     },
     position: {
-        x: {
-            type: Number,
-            required: true,
-        },
-        y: {
-            type: Number,
-            required: true,
-        },
+        x: { type: Number, required: true },
+        y: { type: Number, required: true },
     },
     mindmap: {
         type: mongoose.Schema.Types.ObjectId,
@@ -30,17 +23,20 @@ const nodeSchema = new mongoose.Schema({
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Node',
+            default: [], // Inicializar como array vacío
         },
     ],
     edges: [
         {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Node',
+            ref: 'Edge', // Corregido para referir a 'Edge'
+            default: [], // Inicializar como array vacío
         }
     ]
 }, {
     timestamps: true,
 });
+
 
 const Node = mongoose.model('Node', nodeSchema);
 

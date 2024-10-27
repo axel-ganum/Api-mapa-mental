@@ -127,123 +127,135 @@ export const getMapById = async (mapId, userId) => {
      throw error
    }
 }
-
-export const updateMindmap = async ({id, title, description, nodes, edges, thumbnail, userId}) => {
+export const updateMindmap = async ({ id, title, description, nodes, edges, thumbnail, userId }) => {  
     console.log("Actualizando mapa mental con Id:", id);
-   
+    console.log("Payload recibido:", { id, title, description, nodes, edges, thumbnail });
 
-    if (!id || !title || !description || !Array.isArray(nodes) || !nodes.length || !Array.isArray(edges) || !thumbnail) {
+    // Validación inicial
+    if (!id || !Array.isArray(nodes) || !nodes.length || !Array.isArray(edges) || !thumbnail) {
         console.log("Datos insuficientes para actualizar el mapa");
-        
-
-        throw new Error("Datos insuficinetes para actualizar el mapa")
-    
+        throw new Error("Datos insuficientes para actualizar el mapa");
     }
 
     try {
-    
-    const updatedMindmap  = await Mindmap.findByIdAndUpdate(
-        {_id:id, userId:userId},
-        {title, description, thumbnail},
-        {new: true}
-    )
+        // Buscar el mapa mental por ID
+        console.log("Buscando mapa mental con ID:", id);
+        const mindmap = await Mindmap.findById(id)
+            .populate({
+                path: 'nodes',
+                populate: { path: 'edges', populate: ['source', 'target'] }
+            })
+            .populate('edges');
 
-    if(!updatedMindmap) {
-        console.log("Mapa mental no encontrado o no pertenece al usuario");
-        return null;
-        
-    }
-
-    console.log("Mapa mental actualizado correctamente ");
-
-    const nodeMap = new Map ();
-    const nodePromise = nodes.map(async (nodeData) => {
-
-        if(!nodeData.content) {
-            console.log("Error: El nodo no tiene contenido");
-            throw new Error("Cada nodo debe tener un contenido")
-            
+        if (!mindmap) {
+            console.log("Mapa mental no encontrado para el ID:", id);
+            return null;
         }
 
-        const nodeId = mongoose.Types.ObjectId.isValid(nodeData.id) ? nodeData.id : undefined;
-
-     if(nodeId) {
-
-        const updateNode =  await Node.findByIdAndUpdate(
-            {_id:nodeId, mindmap: updatedMindmap._id},
-            {content: nodeData.content, position: nodeData.position},
-            {new: true}
-        )
-
-        if(!updateNode) {
-          throw new Error(`No se pudo actualiza el nodo con IDn${nodeData.id}`)
+        // Verificación de permisos
+        const isOwner = mindmap.user.toString() === userId;
+        const isSharedWithUser = mindmap.sharedWith.some(sharedWithId => sharedWithId.toString() === userId);
+        console.log("Verificando permisos del usuario:", userId);
+        if (!isOwner && !isSharedWithUser) {
+            console.log("El usuario no tiene permiso para actualizar este mapa mental");
+            throw new Error("No tienes permiso para actualizar este mapa mental");
         }
-        nodeMap.set(nodeData.id, updateNode._id);
-        return updateNode._id;
-        } else {
-            const newNode = new Node({
-                content: nodeData.content,
-                position: nodeData.position,
-                mindmap: updatedMindmap
-            });
-            const savedNode = await newNode.save();
-            nodeMap.set(nodeData.id, savedNode._id);
-            return savedNode._id;
-         
-            
 
+        // Actualización de los datos del mapa mental
+        const updateData = {};
+        if (title) updateData.title = title;
+        if (description) updateData.description = description;
+        if (thumbnail) updateData.thumbnail = thumbnail;
+
+        console.log("Datos actualizados del mapa mental:", updateData);
+        const updatedMindmap = await Mindmap.findByIdAndUpdate(id, updateData, { new: true });
+        if (!updatedMindmap) {
+            console.log("Mapa mental no encontrado o no pertenece al usuario");
+            return null;
+        }
+        console.log("Mapa mental actualizado correctamente");
+
+        // Mapeo de nodos y creación/actualización
+        const nodeMap = new Map();
+        const nodePromises = nodes.map(async (nodeData) => {
+            console.log("Procesando nodo:", nodeData);
+            const nodeId = mongoose.Types.ObjectId.isValid(nodeData.id) ? nodeData.id : undefined;
+
+            if (nodeId) {
+                const updatedNode = await Node.findByIdAndUpdate(
+                    { _id: nodeId, mindmap: updatedMindmap._id },
+                    { content: nodeData.content, position: nodeData.position },
+                    { new: true }
+                );
+                nodeMap.set(nodeData.id, updatedNode);
+                return updatedNode;
+            } else {
+                const newNode = new Node({ content: nodeData.content, position: nodeData.position, mindmap: updatedMindmap });
+                const savedNode = await newNode.save();
+                nodeMap.set(nodeData.id, savedNode);
+                return savedNode;
+            }
+        });
+
+        const savedNodes = await Promise.all(nodePromises);
+        console.log("Nodos procesados:", savedNodes);
+        console.log("NodeMap (para verificar mapeo de nodos):", [...nodeMap.entries()]);
+
+        // Procesamiento de edges (aristas)
+        const edgePromises = edges.map(async (edgeData) => {
+            console.log("Procesando edge:", edgeData);
+            const sourceId = nodeMap.get(edgeData.source)._id;
+            const targetId = nodeMap.get(edgeData.target)._id;
             
-     }
-    });
-    const saveNodeIds = await Promise.all(nodePromise);
-    console.log("Nodos procesados (creandos/ actualizados):", saveNodeIds);
+            if (!sourceId || !targetId) {
+                console.log("Edge con nodos no encontrados:", edgeData, "Source ID:", sourceId, "Target ID:", targetId);
+                throw new Error("No se encontraron nodos para los edges");
+            }
+
+            let edgeId = mongoose.Types.ObjectId.isValid(edgeData.id) ? edgeData.id : null;
+            if (!edgeId || edgeData.id.startsWith("reactflow__edge")) {
+                const newEdge = new Edge({
+                    source: sourceId,
+                    target: targetId,
+                    mindmap: updatedMindmap._id,
+                });
+                const savedEdge = await newEdge.save();
+                edgeId = savedEdge._id;
+            } else {
+                await Edge.findByIdAndUpdate(
+                    { _id: edgeId, mindmap: updatedMindmap._id },
+                    { source: sourceId, target: targetId }
+                );
+            }
+
+            // Actualizar nodos con el edge creado/actualizado
+            await Node.findByIdAndUpdate(sourceId, { $addToSet: { edges: edgeId, children: targetId } });
+            await Node.findByIdAndUpdate(targetId, { $addToSet: { edges: edgeId } });
+        });
+
+        await Promise.all(edgePromises);
+        console.log("Edges procesados (creados/actualizados)");
+
+        // Dar un pequeño retraso antes de la última consulta poblada
+       
+
+        // Devolver el mindmap actualizado con los nodos y edges poblados
+        const updatedMindmapWithPopulatedData = await Mindmap.findById(id)
+        .populate({ path: 'nodes', populate: { path: 'edges' } })
+        .populate('edges');
       
-    const edgePromise = edges.map(async (edgesData) => {
-        const sourceId = nodeMap.get(edgesData.source);
-        const targetId = nodeMap.get(edgesData.target);
-
-        if (!sourceId || !targetId) {
-            console.log(('Error: nodos no encontrados para los edges', edgesData));
-            throw new Error("No se encontraron nodos para los edges");  
-        }
-        let edgeId = mongoose.Types.ObjectId.isValid(edgesData.id) ? edgesData.id : null;
-        if (!edgeId || edgesData.id.startsWith("reactflow__edge")) {
-
-            const newEdge = new Edge({
-               source: new mongoose.Types.ObjectId(sourceId),
-               target: new mongoose.Types.ObjectId(targetId),
-               mindmap: updatedMindmap._id, 
-            });
-           
-            const savedEdge = await newEdge.save();
-            edgeId = savedEdge._id; 
-            
-        } else {
-
-            await Edge.findByIdAndUpdate(
-                {_id: edgeId, mindmap: updatedMindmap._id},
-                {source: sourceId, target: targetId}
-            );
-        
-        }
-         await Node.findByIdAndUpdate(sourceId, {
-            $addToSet: { edges: edgeId || newEdge._id, children: targetId },
-         })
-         await Node.findByIdAndUpdate(targetId, {
-            $addToSet: { edges: edgeId|| newEdge._id },
-          });
-    });
-
-    await Promise.all(edgePromise);
-    console.log("Edges procesados (creados/actualizados");
-    return updatedMindmap
-    
+      console.log("Mapa mental actualizado con nodos y aristas poblados:", updatedMindmapWithPopulatedData);
+      return updatedMindmapWithPopulatedData;
+      
     } catch (error) {
         console.error("Error al actualizar el mapa mental:", error.message);
-    throw new Error("Error al actualizar el mapa mental: " + error.message);
-        
+        throw new Error("Error al actualizar el mapa mental: " + error.message);
     }
-}
+};
+
+
+
+
 
 export const deleteNodeFromDatabase = async (nodeId) => {
 

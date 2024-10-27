@@ -20,6 +20,7 @@ const edgeSchema = new mongoose.Schema({
     timestamps: true,
 });
 
+
 const Edge = mongoose.model('Edge', edgeSchema);
 
 export default Edge;
