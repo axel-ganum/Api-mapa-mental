@@ -1,7 +1,7 @@
 import express from 'express';
 import { register, login } from '../controllers/authController.js'; // Corregido: 'autController' a 'authController'
-import authMiddleware from '../middlewares/authMiddleware.js'; // Corregido: 'authMiddlewere' a 'authMiddleware'
-import User from '../models/userModel.js'; // Corregido: Eliminado la desestructuración
+import authMiddleware from '../middlewares/authMiddleware.js'; 
+import User from '../models/userModel.js';
 import upload from '../middlewares/upload.js';
 
 const router = express.Router();

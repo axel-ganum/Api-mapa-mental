@@ -6,7 +6,8 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import auth  from './src/routes/auth.js';
 import map from './src/middlewares/veryfyToken.js';
-import maps from './src/routes/maps.js'
+import maps from './src/routes/maps.js';
+import profile from './src/routes/profile.js'
 import authMiddleware from './src/middlewares/authMiddleware.js'; // Corregido: Se cambió 'authMiddlewere' a 'authMiddleware'
 import cors from 'cors';
 import { createMindmap, getMapById, updateMindmap,deleteNodeFromDatabase, shareMapWithUser} from './src/routes/map.js';
@@ -25,21 +26,52 @@ const app = express();
 app.use(cors({
     origin: 'http://localhost:5173'
   }));
-
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ limit: '10mb', extended: true }));
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
+
+const syncUserStats = async () => {
+    try {
+      const users = await User.find();
+  
+      for (const user of users) {
+        const totalMapas = await Mindmap.countDocuments({ userId: user._id });
+        const sharedMaps = await Mindmap.countDocuments({ 
+          userId: user._id,
+          sharedWith: { $exists: true, $ne: [] } 
+        });
+        const activeCollaborations = await Mindmap.countDocuments({
+          sharedWith: user._id
+        });
+  
+        await User.findByIdAndUpdate(user._id, {
+          'stats.totalMapas': totalMapas,
+          'stats.sharesMpas': sharedMaps,
+          'stats.activeCollaborations': activeCollaborations
+        });
+      }
+  
+      console.log('Sincronización de estadísticas completada');
+    } catch (error) {
+      console.error('Error al sincronizar estadísticas:', error);
+    }
+  };
+  
 
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 }).then(() => console.log('Conectado a MongoDB'))
+     syncUserStats()
   .catch((err) => console.error('Error al conectar', err));
 
 app.use(bodyParser.json());
 
 app.use('/auth', auth);
 app.use('/map', authMiddleware, map); // Corregido: Se aplicó el middleware de autenticación a la ruta '/map'
-app.use('/maps', authMiddleware, maps)
+app.use('/maps', authMiddleware, maps);
+app.use('/perfil', authMiddleware, profile)
 
 wss.on('connection', async (ws, req) => {
     const token = req.url.split('?token=')[1];
@@ -100,6 +132,10 @@ wss.on('connection', async (ws, req) => {
                             thumbnail,
                             userId: ws.user.id,
                         });
+
+                         await User.findByIdAndUpdate(ws.user.id, {
+                         $inc: { 'stats.totalMapas': 1 }, 
+                       }); 
     
                         ws.send(JSON.stringify({ type: 'success', action:'saveMap', map: savedMindmap }));
                         console.log('Mapa mental guardado:', savedMindmap);
@@ -187,7 +223,7 @@ wss.on('connection', async (ws, req) => {
             }
                 
             
-            // Manejo de la acción 'deleteNode'
+            
             else if (data.action === 'deleteNode') {
                 console.log("Tipo de acción 'deleteNode' reconocida");
                 const mapId = data.mapId;
@@ -200,7 +236,7 @@ wss.on('connection', async (ws, req) => {
                  }
     
                 try {
-                    // Intentar eliminar el nodo de la base de datos
+                  
                     await deleteNodeFromDatabase(nodeId);
                     console.log(`Nodo eliminado, enviando respuesta: ${nodeId}`)
                     ws.send(JSON.stringify({
@@ -240,7 +276,15 @@ wss.on('connection', async (ws, req) => {
                         ws.send(JSON.stringify({type: 'error', message: 'No se encontró un usuario con ese correo electrónico'}))
                     }
                     const result = await shareMapWithUser(mapId, emailToShare, connectectedUsers);
+                     
+                    await User.findByIdAndUpdate(ws.user.id, {
+                        $inc: { 'stats.sharesMpas': 1 },
+                        
+                    });
 
+                    await User.findByIdAndUpdate(userToShare._id, {
+                        $inc: { 'stats.activeCollaborations': 1 }
+                    });
                     if(result.success) {
                         ws.send(JSON.stringify({type: 'success', action:'shareMap', message: result.message}));
                         console.log(`Mapa con ID ${mapId} compartido con el usuario ${userToShare.email}`);

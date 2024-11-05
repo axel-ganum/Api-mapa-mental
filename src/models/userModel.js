@@ -18,8 +18,14 @@ const userSchema = new mongoose.Schema({
     profilePicture: {
         type: String,
         default: null,
+    },
+    stats: {
+        totalMapas: { type: Number, default: 0 },
+        sharesMpas: { type: Number, default: 0 },
+        activeCollaborations: { type: Number, default: 0 },
     }
-}, {
+}
+, {
     timestamps: true,
 });
 
