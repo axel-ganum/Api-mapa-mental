@@ -1,10 +1,10 @@
-import Mindmap from '../models/mapModel.js'; // Corregido: Se añadió el punto y coma al final de la importación
-import Node from '../models/node.js'; // Corregido: Se añadió el punto y coma al final de la importación
+import Mindmap from '../models/mapModel.js'; 
+import Node from '../models/node.js'; 
 import Edge from '../models/edgesModel.js';
 import mongoose from 'mongoose';
 import User from '../models/userModel.js';
 import Notification from '../models/NotificationSchema.js'
-
+const { ObjectId } = mongoose.Types
 
 
 export const createMindmap = async ({title, description, nodes, edges,thumbnail,userId  }) => {
@@ -256,23 +256,28 @@ export const updateMindmap = async ({ id, title, description, nodes, edges, thum
 
 
 
-
 export const deleteNodeFromDatabase = async (nodeId) => {
-
     try {
-        await Edge.deleteMany({$or: [{source: nodeId}, {target: nodeId}]});
-        
-        const result = await Node.findByIdAndDelete(nodeId);
+        // Verificar si el `nodeId` es un ObjectId válido (24 caracteres hexadecimales)
+        const query = ObjectId.isValid(nodeId) ? new ObjectId(nodeId) : nodeId;
 
-        if(!result) {
-            throw new Error('Nodo no encontrado')
+        // Eliminar edges con el `nodeId` en source o target
+        await Edge.deleteMany({ $or: [{ source: query }, { target: query }] });
+
+        // Eliminar el nodo con el `nodeId`
+        const result = await Node.findByIdAndDelete(query);
+
+        if (!result) {
+            throw new Error('Nodo no encontrado');
         }
-        console.log('Nodo eliminado');
-        
-    } catch (error){
-        throw new Error('Eroor al eliminar nodo' + error.message)
+        console.log('Nodo eliminado exitosamente');
+
+    } catch (error) {
+        console.error('Error al eliminar nodo:', error.message);
+        throw new Error('Error al eliminar nodo: ' + error.message);
     }
-}
+};
+
 
 export const shareMapWithUser = async (mapId, emailToShare, connectectedUsers) => {
     try {

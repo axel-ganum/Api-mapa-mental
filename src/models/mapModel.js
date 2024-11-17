@@ -20,14 +20,14 @@ const mindmapSchema = new mongoose.Schema({
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Node',
-            default: [], // Inicializar como array vacío
+            default: [], 
         },
     ],
     edges: [
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Edge',
-            default: [], // Inicializar como array vacío
+            default: [], 
         },
     ],
     thumbnail: {

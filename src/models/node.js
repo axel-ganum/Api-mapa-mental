@@ -23,14 +23,14 @@ const nodeSchema = new mongoose.Schema({
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Node',
-            default: [], // Inicializar como array vacío
+            default: [], 
         },
     ],
     edges: [
         {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Edge', // Corregido para referir a 'Edge'
-            default: [], // Inicializar como array vacío
+            ref: 'Edge', 
+            default: [], 
         }
     ]
 }, {
