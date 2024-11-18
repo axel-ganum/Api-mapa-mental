@@ -6,6 +6,7 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import auth  from './src/routes/auth.js';
 import map from './src/middlewares/veryfyToken.js';
+import maps from './src/routes/maps.js';
 import profile from './src/routes/profile.js'
 import authMiddleware from './src/middlewares/authMiddleware.js';
 import cors from 'cors';
@@ -39,6 +40,7 @@ app.use(bodyParser.json());
 
 app.use('/auth', auth);
 app.use('/map', authMiddleware, map); 
+app.use('/maps', authMiddleware, maps )
 app.use('/perfil', authMiddleware, profile)
 
 wss.on('connection', async (ws, req) => {
