@@ -14,6 +14,7 @@ import { createMindmap, getMapById, updateMindmap,deleteNodeFromDatabase, shareM
 import User from './src/models/userModel.js';
 import authenticateToken from './src/middlewares/authenticateToken.js';
 import  {sendPendingNotifications } from './src/uploads/send.js';
+import path from 'path'
 import Notification from './src/models/NotificationSchema.js';
 
 
@@ -37,7 +38,7 @@ mongoose.connect(process.env.MONGO_URI, {
   .catch((err) => console.error('Error al conectar', err));
 
 app.use(bodyParser.json());
-
+app.use('/storage', express.static(path.resolve('storage')))
 app.use('/auth', auth);
 app.use('/map', authMiddleware, map); 
 app.use('/maps', authMiddleware, maps )

@@ -1,7 +1,7 @@
 import express from 'express'
 import User from '../models/userModel.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
-
+import upload from '../config/multer.js';
 const router = express.Router();
 
 router.get('/', authMiddleware, async (req, res) => {
@@ -20,25 +20,28 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 })
 
-router.put('/', authMiddleware, async (req, res) => {
-    const { profilePicture } = req.body;
-   try {
-    const updateUser = await User.findByIdAndUpdate(
-        req.user.id,
-        { profilePicture},
-        {new: true}
-    )
-     
-    if (!updateUser) {
-        return res.status(404).json({message: 'Usuario no encontrado'})
-        
+router.put('/', authMiddleware, upload.single('profilePicture'), async (req, res) => {
+    try {
+      const { theme } = req.body;
+      const userId = req.user.id;
+  
+      const updateData = { theme };
+  
+      if (req.file) {
+        updateData.profilePicture = `/storage/${req.file.filename}`;
+      }
+  
+      const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true });
+  
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+  
+      res.json({ message: 'Perfil actualizado', user: updatedUser });
+    } catch (error) {
+      console.error('Error al actualizar el perfil:', error);
+      res.status(500).json({ message: 'Error al actualizar el perfil' });
     }
-
-    res.json({message: 'Perfil actualizado', user: updateUser})
-   } catch (error) {
-       console.error('Error al actualizar el perfil:', error);
-       res.status(500).json({message: 'Error al actualizar el perfil'})
-   }
-})
+  });
 
 export default router;
