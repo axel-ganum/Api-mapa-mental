@@ -12,7 +12,7 @@ router.get('/', authMiddleware, async (req, res) => {
             return res.status(404).json({message: 'Usuario no encontrado'})
             
         }
-
+        console.log('Datos del perfil:', user);
         res.json(user)
     } catch (error) {
         console.error('Error al obtener el perfill del usuario:', error);
