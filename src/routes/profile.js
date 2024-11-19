@@ -28,6 +28,7 @@ router.put('/', authMiddleware, upload.single('profilePicture'), async (req, res
       const updateData = { theme };
   
       if (req.file) {
+        console.log('Archivo subido:', req.file);
         updateData.profilePicture = `/storage/${req.file.filename}`;
       }
   
