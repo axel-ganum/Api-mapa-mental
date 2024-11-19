@@ -24,7 +24,9 @@ const connectectedUsers = {};
 
 const app = express();
 app.use(cors({
-    origin: 'http://localhost:5173'
+    origin: ['http://localhost:5173','https://api-mapa-mental.onrender.com','http://localhost:3000'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Métodos permitidos
+    credentials: true
   }));
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
