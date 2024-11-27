@@ -23,7 +23,7 @@ const connectectedUsers = {};
 
 const app = express();
 app.use(cors({
-    origin: ['http://localhost:5173','https://api-mapa-mental.onrender.com','http://localhost:3000'],
+    origin: ['https://gorgeous-druid-40dd81.netlify.app','https://api-mapa-mental.onrender.com','http://localhost:3000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'], 
     credentials: true
   }));
