@@ -24,9 +24,12 @@ const connectectedUsers = {};
 const app = express();
 app.use(cors({
     origin: ['https://gorgeous-druid-40dd81.netlify.app','https://api-mapa-mental.onrender.com','http://localhost:3000'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'], 
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
     credentials: true
   }));
+
+   app.options("*", cors());
+
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 const server = http.createServer(app);
