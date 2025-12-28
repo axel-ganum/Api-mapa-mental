@@ -19,7 +19,8 @@ import Notification from './src/models/NotificationSchema.js';
 
 dotenv.config();
 
-const connectectedUsers = {};
+const connectedUsers = {};
+const rooms = {}; // Track users in each map room: { mapId: Set(userIds) }
 
 const app = express();
 app.use(cors({
@@ -47,6 +48,17 @@ app.use('/map', authMiddleware, map);
 app.use('/maps', authMiddleware, maps )
 app.use('/perfil', authMiddleware, profile)
 
+const broadcastToRoom = (mapId, message, excludeWs = null) => {
+    if (rooms[mapId]) {
+        rooms[mapId].forEach(userId => {
+            const client = connectedUsers[userId];
+            if (client && client.readyState === WebSocket.OPEN && client !== excludeWs) {
+                client.send(JSON.stringify(message));
+            }
+        });
+    }
+};
+
 wss.on('connection', async (ws, req) => {
     const token = req.url.split('?token=')[1];
     console.log('Token recibido:', token);
@@ -54,12 +66,13 @@ wss.on('connection', async (ws, req) => {
     try {
         const user = await authenticateToken(token)
         ws.user = user
+        ws.currentMapId = null; // Track which map the user is currently looking at
         console.log('Usuario autenticado:', ws.user)
     
        
-        connectectedUsers[ws.user.id] = ws;
+        connectedUsers[ws.user.id] = ws;
 
-        sendPendingNotifications(ws.user.id, connectectedUsers);
+        sendPendingNotifications(ws.user.id, connectedUsers);
        
     
     } catch (err) {
@@ -81,13 +94,33 @@ wss.on('connection', async (ws, req) => {
             console.log('Datos recibidos:', JSON.stringify(data, null, 2));
     
            
-            if (data.action === 'saveMap') {
+            if (data.action === 'joinMap') {
+                const { mapId } = data.payload || {};
+                if (!mapId) return;
+
+                // Leave previous room if any
+                if (ws.currentMapId && rooms[ws.currentMapId]) {
+                    rooms[ws.currentMapId].delete(ws.user.id);
+                }
+
+                ws.currentMapId = mapId;
+                if (!rooms[mapId]) {
+                    rooms[mapId] = new Set();
+                }
+                rooms[mapId].add(ws.user.id);
+                
+                console.log(`Usuario ${ws.user.id} se unió a la sala del mapa ${mapId}`);
+                
+                // Notify others in the room about presence (optional)
+                broadcastToRoom(mapId, { type: 'presence', action: 'userJoined', userId: ws.user.id }, ws);
+            }
+            else if (data.action === 'saveMap') {
                 console.log("Tipo de acción 'saveMap' reconocida");
                 
                 if (data.payload) {
                     console.log("Payload recibido:", JSON.stringify(data.payload, null, 2));
                     const { title, description, nodes, edges, thumbnail } = data.payload;
-                     
+                    
                  
                     if (!title || !description || !Array.isArray(nodes) || !Array.isArray(edges) || !thumbnail) {
                         console.log("Datos insuficientes o mal formateados");
@@ -151,7 +184,7 @@ wss.on('connection', async (ws, req) => {
     
             } 
             else if (data.action === 'updateMap') {
-                console.log("Tipo deacción 'updateMap' reconocida");
+                console.log("Tipo de acción 'updateMap' reconocida");
                 
                 if (data.payload) {
                     const { id, title, description, nodes, edges, thumbnail } = data.payload;
@@ -181,11 +214,8 @@ wss.on('connection', async (ws, req) => {
                             ws.send(JSON.stringify({ type: 'success', action: 'updateMap', map: updatedMap }));
                             
                            
-                            wss.clients.forEach((client) => {
-                                if (client.readyState === WebSocket.OPEN && client !== ws) { // Omitir al cliente que hizo la edición
-                                    client.send(JSON.stringify({ type: 'success', action: 'mapUpdated', map: updatedMap }));
-                                }
-                            });
+                            // Broadcast ONLY to users in the same map room
+                            broadcastToRoom(id, { type: 'success', action: 'mapUpdated', map: updatedMap }, ws);
                             
                         } else {
                             ws.send(JSON.stringify({ type: 'error', message: 'No se pudo actualizar el mapa' }));
@@ -196,9 +226,20 @@ wss.on('connection', async (ws, req) => {
                     }
                 }
             }
-                
-            
-            
+            else if (data.action === 'nodeMoved') {
+                // Granular action: broadcasting node movement in real-time
+                const { mapId, nodeId, position } = data.payload || {};
+                if (mapId && nodeId && position) {
+                    broadcastToRoom(mapId, { type: 'info', action: 'nodeMoved', nodeId, position }, ws);
+                }
+            }
+            else if (data.action === 'nodeEdited') {
+                // Granular action: broadcasting node content changes
+                const { mapId, nodeId, content } = data.payload || {};
+                if (mapId && nodeId && content) {
+                    broadcastToRoom(mapId, { type: 'info', action: 'nodeEdited', nodeId, content }, ws);
+                }
+            }
             else if (data.action === 'deleteNode') {
                 console.log("Tipo de acción 'deleteNode' reconocida");
                 const mapId = data.mapId;
@@ -221,11 +262,10 @@ wss.on('connection', async (ws, req) => {
                         nodeId: nodeId
                     }));
 
-                    wss.clients.forEach((client) => {
-                        if (client.readyState === WebSocket.OPEN && client !== ws) { 
-                            client.send(JSON.stringify({ type: 'success', action: 'nodeDeleted',map: { _id:mapId} , nodeId: nodeId }));
-                        }
-                    });
+                    // Broadcast to room instead of everyone
+                    if (mapId) {
+                        broadcastToRoom(mapId, { type: 'success', action: 'nodeDeleted', map: { _id: mapId }, nodeId: nodeId }, ws);
+                    }
                     console.log(`Nodo con ID ${nodeId} eliminado exitosamente`);
                 } catch (error) {
                     console.error('Error al eliminar nodo:', error);
@@ -250,7 +290,7 @@ wss.on('connection', async (ws, req) => {
                     if(!userToShare) {
                         ws.send(JSON.stringify({type: 'error', message: 'No se encontró un usuario con ese correo electrónico'}))
                     }
-                    const result = await shareMapWithUser(mapId, emailToShare, connectectedUsers);
+                    const result = await shareMapWithUser(mapId, emailToShare, connectedUsers);
                      
                     await User.findByIdAndUpdate(ws.user.id, {
                         $inc: { 'stats.sharesMpas': 1 },
@@ -325,10 +365,20 @@ wss.on('connection', async (ws, req) => {
         
  
 
+
     ws.on('close', () => {
-        if(connectectedUsers[ws.user.id]){
-            delete connectectedUsers[ws.user.id];
+        if(connectedUsers[ws.user.id]){
+            delete connectedUsers[ws.user.id];
         }
+
+        // Leave room on disconnect
+        if (ws.currentMapId && rooms[ws.currentMapId]) {
+            rooms[ws.currentMapId].delete(ws.user.id);
+            if (rooms[ws.currentMapId].size === 0) {
+                delete rooms[ws.currentMapId];
+            }
+        }
+
         console.log('Cliente desconectado');
     });
 
@@ -338,3 +388,4 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Servicio escuchando en el puerto ${PORT}`);
 });
+
